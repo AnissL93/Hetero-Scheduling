@@ -11,8 +11,10 @@ from .processor import Chip, Processor
 
 class OpCost(object):
     def __init__(self, b) -> None:
-        # supported backends and the cost
-        self.backends = b
+        # make all cost to int
+        self.backends = {}
+        for k,v in b.items():
+            self.backends[k] = int(v)
 
     def get_backend_ids(self):
         return list(self.backends.keys())

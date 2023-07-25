@@ -116,8 +116,8 @@ class ILPSolver(Solver):
 
         self.problem.Params.Threads = 16
         self.problem.Params.NodefileStart = 1024*32
-        # self.problem.Params.NodeLimit = 100000
-        # self.problem.Params.SolutionLimit = 100
+        self.problem.Params.NodeLimit = 1000000
+        self.problem.Params.SolutionLimit = 100
 
 
     def get_execution_order(self):
