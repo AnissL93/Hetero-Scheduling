@@ -89,12 +89,14 @@ class ILPSolver(Solver):
         for op in self.graph.topo_sort():
             for h_id in self.chip.ids():
                 self.x[op, h_id] = self.problem.addVar(
-                    vtype=GRB.INTEGER, lb=0, ub=1, name=f"x_{op}_{h_id}"
+                    vtype=GRB.BINARY, name=f"x_{op}_{h_id}"
                 )
 
         self.st = {}
+        self.ft = {}
         for op in self.graph.topo_sort():
             self.st[op] = self.problem.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"st_{op}")
+            self.ft[op] = self.st[op] + self.cost_of_op(op)
 
         self.avail_proc = {}
         for op in self.graph.topo_sort():
@@ -102,10 +104,6 @@ class ILPSolver(Solver):
                 self.avail_proc[op, h_id] = self.problem.addVar(
                     vtype=GRB.CONTINUOUS, lb=0, name=f"avail_proc_{op}_{h_id}"
                 )
-
-        self.ft = {
-            node: self.st[node] + self.cost_of_op(node) for node in self.graph.topo_sort()
-        }
 
         self.limit_resource()
 
@@ -118,8 +116,8 @@ class ILPSolver(Solver):
 
         self.problem.Params.Threads = 16
         self.problem.Params.NodefileStart = 1024*32
-        self.problem.Params.NodeLimit = 10000
-        self.problem.Params.SolutionLimit = 10
+        # self.problem.Params.NodeLimit = 100000
+        # self.problem.Params.SolutionLimit = 100
 
 
     def get_execution_order(self):
@@ -139,14 +137,11 @@ class ILPSolver(Solver):
     def objective_func(self):
         """The objective is to minimize the eft of the last operations"""
         exit_nodes = self.graph.get_exit_ops()
-        if len(exit_nodes) == 1:
-            self.problem.setObjective(self.ft[exit_nodes[0]])
-        else:
-            last_node = self.problem.addVar(vtype=GRB.INTEGER, name="x_exit_node")
-            for n in exit_nodes:
-                self.problem.addConstr(last_node >= self.ft[n])
+        last_node = self.problem.addVar(vtype=GRB.CONTINUOUS, name="x_exit_node")
+        for n in exit_nodes:
+            self.problem.addConstr(last_node >= self.ft[n])
 
-            self.problem.setObjective(last_node, GRB.MINIMIZE)
+        self.problem.setObjective(last_node, GRB.MINIMIZE)
 
 
     def print_problem(self):
@@ -199,7 +194,7 @@ class ILPSolver(Solver):
 
                 cost = self.graph.get_op_cost(node)
                 for proc in self.chip.processors:
-                    if cost.get_cost_of_device(proc.type) == -1:
+                    if cost.get_cost_of_device(proc.type) <= 0:
                         self.problem.addConstr(self.x[node, proc.id] == 0)
 
 
@@ -230,17 +225,15 @@ class ILPSolver(Solver):
                 return max_float
 
             parallel_nodes = self.find_parallel_nodes()
-            print("Parallel nodes:")
-            print(parallel_nodes)
             M = __max_cost(self.graph.op_cost) + 100000000.0
-            print("Max float is ", M)
             y = {}
             for n, m in parallel_nodes:
-                y[n, m] = self.problem.addVar(vtype=GRB.BINARY, name=f"y_{n}_{m}")
+                for h in self.chip.processors:
+                    y[n, m, h.id] = self.problem.addVar(vtype=GRB.BINARY, name=f"y_{n}_{m}_{h.id}")
 
-            for h in self.chip.processors:
-                for n, m in parallel_nodes:
-                    yy = y[n, m]
+            for n, m in parallel_nodes:
+                for h in self.chip.processors:
+                    yy = y[n, m, h.id]
                     xn = self.x[n, h.id]
                     xm = self.x[m, h.id]
                     cond = self.ft[n] - self.st[m] + (2 * M) * (xn + xm - 2) <= M * yy

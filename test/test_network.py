@@ -13,8 +13,6 @@ from schedule.emulator import async_emulation
 
 def run_network_scheduling(csv_file, chip):
     graph = read_csv(csv_file)
-    print(graph.to_df())
-    graph.draw_graph_structure("a.pdf")
 
     results = solveDag(ILPSolver, graph, chip)
     print(results)
@@ -23,5 +21,7 @@ def run_network_scheduling(csv_file, chip):
     print(exec_time.get_total_time())
 
 def test_arm():
-    run_network_scheduling("../data/net_perf/arm/InceptionV1.csv", arm_chip)
+    run_network_scheduling("data/net_perf/arm/InceptionV3_block.csv", arm_chip)
+
+test_arm()
 
