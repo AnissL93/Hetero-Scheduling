@@ -13,7 +13,7 @@ from schedule.emulator import async_emulation
 
 
 def test_cost_graph_read():
-    graph = read_csv("data/net_perf/bst/inception_v1.csv")
+    graph = read_csv("../data/net_perf/bst/bevformer_with_shape.csv")
     print(graph.to_df())
 
     results = solveDag(ILPSolver, graph, bst_chip)
