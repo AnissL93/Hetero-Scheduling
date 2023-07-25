@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_dir)
+
 from schedule.cost_graph import *
 from schedule.solver import *
 from schedule.processor import bst_chip
 from schedule.emulator import async_emulation
 
+
 def test_cost_graph_read():
-    graph = read_csv("../data/net_perf/bst/inception_v1_block1.csv")
+    graph = read_csv("data/net_perf/bst/inception_v1.csv")
     print(graph.to_df())
 
     results = solveDag(ILPSolver, graph, bst_chip)
