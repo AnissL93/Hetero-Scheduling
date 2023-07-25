@@ -198,9 +198,9 @@ class ILPSolver(Solver):
                 )
 
                 cost = self.graph.get_op_cost(node)
-                for p_id in cost.get_backend_ids():
-                    if cost.get_cost_of_device(p_id) == -1:
-                        self.problem.addConstr(self.x[node, p_id] == 0)
+                for proc in self.chip.processors:
+                    if cost.get_cost_of_device(proc.type) == -1:
+                        self.problem.addConstr(self.x[node, proc.id] == 0)
 
 
         def constraint_st_ft():
