@@ -107,7 +107,7 @@ class ILPSolver(Solver):
             node: self.st[node] + self.cost_of_op(node) for node in self.graph.topo_sort()
         }
 
-        # self.limit_resource()
+        self.limit_resource()
 
     def limit_resource(self):
         print(self.problem.Params.Threads)
@@ -117,9 +117,9 @@ class ILPSolver(Solver):
         print(self.problem.Params.NodefileStart)
 
         self.problem.Params.Threads = 16
-        self.problem.Params.NodeLimit = 1000
-        self.problem.Params.SolutionLimit = 10
         self.problem.Params.NodefileStart = 1024*32
+        self.problem.Params.NodeLimit = 10000
+        self.problem.Params.SolutionLimit = 10
 
 
     def get_execution_order(self):
@@ -188,11 +188,20 @@ class ILPSolver(Solver):
         """
 
         def constraint_x():
+            """
+            Constr1: only one processor is assigned to True
+            Constr2: processor with -1 as the performance cost should be assigned to False
+            """
             for node in self.graph.topo_sort():
                 self.problem.addConstr(
                     gp.quicksum(self.x[node, h.id] for h in self.chip.processors) == 1
                 )
-            print(f"constraints X number: {self.problem.numConstrs}")
+
+                cost = self.graph.get_op_cost(node)
+                for p_id in cost.get_backend_ids():
+                    if cost.get_cost_of_device(p_id) == -1:
+                        self.problem.addConstr(self.x[node, p_id] == 0)
+
 
         def constraint_st_ft():
             """
