@@ -1,0 +1,259 @@
+,op_id,op_type,suc,MACA,CV_DSP
+0,Unsqueeze_0,Unsqueeze,['Squeeze_3'],-1,2357348
+1,Clip_1654,Clip,['Cast_1655'],136789,-1
+2,Squeeze_3,Squeeze,['Conv_4'],300,300
+3,Cast_1655,Cast,['Unsqueeze_1656'],-1,141432
+4,Conv_4,Conv,['Relu_5'],2710816,55584515
+5,Unsqueeze_1656,Unsqueeze,['Cast_1657'],-1,138606
+6,Relu_5,Relu,['MaxPool_6'],4698517,4698517
+7,Cast_1657,Cast,['Div_1658'],-1,141432
+8,MaxPool_6,MaxPool,"['Conv_7', 'Conv_12']",2234684,24868501
+9,Conv_7,Conv,['Relu_8'],2073901,2620741
+10,Conv_12,Conv,['Add_13'],2150748,4864267
+11,Relu_8,Relu,['Conv_9'],2849535,2849535
+12,Conv_9,Conv,['Relu_10'],2278331,48693889
+13,Relu_10,Relu,['Conv_11'],2849535,2849535
+14,Conv_11,Conv,['Add_13'],2150748,4864267
+15,Add_13,Add,['Relu_14'],-1,5461533
+16,Relu_14,Relu,"['Conv_15', 'Add_20']",4698517,4698517
+17,Conv_15,Conv,['Relu_16'],2150748,4864267
+18,Relu_16,Relu,['Conv_17'],2849535,2849535
+19,Conv_17,Conv,['Relu_18'],2278331,48693889
+20,Relu_18,Relu,['Conv_19'],2849535,2849535
+21,Conv_19,Conv,['Add_20'],2150748,4864267
+22,Add_20,Add,['Relu_21'],-1,5461533
+23,Relu_21,Relu,"['Conv_22', 'Add_27']",4698517,4698517
+24,Conv_22,Conv,['Relu_23'],2150748,4864267
+25,Relu_23,Relu,['Conv_24'],2849535,2849535
+26,Conv_24,Conv,['Relu_25'],2278331,48693889
+27,Relu_25,Relu,['Conv_26'],2849535,2849535
+28,Conv_26,Conv,['Add_27'],2150748,4864267
+29,Add_27,Add,['Relu_28'],-1,5461533
+30,Relu_28,Relu,"['Conv_29', 'Conv_34']",4698517,4698517
+31,Conv_29,Conv,['Relu_30'],1457951,47911893
+32,Conv_34,Conv,['Add_35'],2681156,55259229
+33,Relu_30,Relu,['Conv_31'],788083,788083
+34,Conv_31,Conv,['Relu_32'],605083,47020641
+35,Relu_32,Relu,['Conv_33'],788083,788083
+36,Conv_33,Conv,['Add_35'],1095538,3809057
+37,Add_35,Add,['Relu_36'],-1,5461533
+38,Relu_36,Relu,"['Conv_37', 'Add_42']",3666096,3666096
+39,Conv_37,Conv,['Relu_38'],1532710,4246229
+40,Relu_38,Relu,['Conv_39'],788083,788083
+41,Conv_39,Conv,['Relu_40'],605083,47020641
+42,Relu_40,Relu,['Conv_41'],788083,788083
+43,Conv_41,Conv,['Add_42'],1095538,3809057
+44,Add_42,Add,['Relu_43'],-1,5461533
+45,Relu_43,Relu,"['Conv_44', 'Add_49']",3666096,3666096
+46,Conv_44,Conv,['Relu_45'],1532710,4246229
+47,Relu_45,Relu,['Conv_46'],788083,788083
+48,Conv_46,Conv,['Relu_47'],605083,47020641
+49,Relu_47,Relu,['Conv_48'],788083,788083
+50,Conv_48,Conv,['Add_49'],1095538,3809057
+51,Add_49,Add,['Relu_50'],-1,5461533
+52,Relu_50,Relu,"['Conv_51', 'Add_56']",3666096,3666096
+53,Conv_51,Conv,['Relu_52'],1532710,4246229
+54,Relu_52,Relu,['Conv_53'],788083,788083
+55,Conv_53,Conv,['Relu_54'],605083,47020641
+56,Relu_54,Relu,['Conv_55'],788083,788083
+57,Conv_55,Conv,['Add_56'],1095538,3809057
+58,Add_56,Add,['Relu_57'],-1,5461533
+59,Relu_57,Relu,"['Conv_58', 'Conv_63']",3666096,3666096
+60,Conv_58,Conv,['Relu_59'],1375671,47829613
+61,Conv_63,Conv,['Add_64'],2681156,55259229
+62,Relu_59,Relu,['Conv_60'],308639,308639
+63,Conv_60,Conv,['Relu_61'],568359,46983917
+64,Relu_61,Relu,['Conv_62'],308639,308639
+65,Conv_62,Conv,['Add_64'],1141094,3854613
+66,Add_64,Add,['Relu_65'],-1,2226591
+67,Relu_65,Relu,"['Conv_66', 'Add_71']",2849535,2849535
+68,Conv_66,Conv,['Relu_67'],1450430,4163949
+69,Relu_67,Relu,['Conv_68'],308639,308639
+70,Conv_68,Conv,['Relu_69'],568359,46983917
+71,Relu_69,Relu,['Conv_70'],308639,308639
+72,Conv_70,Conv,['Add_71'],1141094,3854613
+73,Add_71,Add,['Relu_72'],-1,2226591
+74,Relu_72,Relu,"['Conv_73', 'Add_78']",2849535,2849535
+75,Conv_73,Conv,['Relu_74'],1450430,4163949
+76,Relu_74,Relu,['Conv_75'],308639,308639
+77,Conv_75,Conv,['Relu_76'],568359,46983917
+78,Relu_76,Relu,['Conv_77'],308639,308639
+79,Conv_77,Conv,['Add_78'],1141094,3854613
+80,Add_78,Add,['Relu_79'],-1,2226591
+81,Relu_79,Relu,"['Conv_80', 'Add_85']",2849535,2849535
+82,Conv_80,Conv,['Relu_81'],1450430,4163949
+83,Relu_81,Relu,['Conv_82'],308639,308639
+84,Conv_82,Conv,['Relu_83'],568359,46983917
+85,Relu_83,Relu,['Conv_84'],308639,308639
+86,Conv_84,Conv,['Add_85'],1141094,3854613
+87,Add_85,Add,['Relu_86'],-1,2226591
+88,Relu_86,Relu,"['Conv_87', 'Add_92']",2849535,2849535
+89,Conv_87,Conv,['Relu_88'],1450430,4163949
+90,Relu_88,Relu,['Conv_89'],308639,308639
+91,Conv_89,Conv,['Relu_90'],568359,46983917
+92,Relu_90,Relu,['Conv_91'],308639,308639
+93,Conv_91,Conv,['Add_92'],1141094,3854613
+94,Add_92,Add,['Relu_93'],-1,2226591
+95,Relu_93,Relu,"['Conv_94', 'Add_99']",2849535,2849535
+96,Conv_94,Conv,['Relu_95'],1450430,4163949
+97,Relu_95,Relu,['Conv_96'],308639,308639
+98,Conv_96,Conv,['Relu_97'],568359,46983917
+99,Relu_97,Relu,['Conv_98'],308639,308639
+100,Conv_98,Conv,['Add_99'],1141094,3854613
+101,Add_99,Add,['Relu_100'],-1,2226591
+102,Relu_100,Relu,"['Conv_101', 'Conv_106']",2849535,2849535
+103,Conv_101,Conv,['Relu_102'],1320452,47774394
+104,Conv_106,Conv,['Add_107'],2063118,54641191
+105,Relu_102,Relu,['Conv_103'],151375,151375
+106,Conv_103,Conv,['Relu_104'],467584,46883142
+107,Relu_104,Relu,['Conv_105'],151375,151375
+108,Conv_105,Conv,['Add_107'],523056,3236575
+109,Add_107,Add,['Relu_108'],-1,1511881
+110,Relu_108,Relu,"['Conv_109', 'Add_114']",788083,788083
+111,Conv_109,Conv,['Relu_110'],493470,3206989
+112,Relu_110,Relu,['Conv_111'],151375,151375
+113,Conv_111,Conv,['Relu_112'],467584,46883142
+114,Relu_112,Relu,['Conv_113'],151375,151375
+115,Conv_113,Conv,['Add_114'],523056,3236575
+116,Add_114,Add,['Relu_115'],-1,1511881
+117,Relu_115,Relu,"['Conv_116', 'Add_121']",788083,788083
+118,Conv_116,Conv,['Relu_117'],493470,3206989
+119,Relu_117,Relu,['Conv_118'],151375,151375
+120,Conv_118,Conv,['Relu_119'],467584,46883142
+121,Relu_119,Relu,['Conv_120'],151375,151375
+122,Conv_120,Conv,['Add_121'],523056,3236575
+123,Add_121,Add,['Relu_122'],-1,1511881
+124,Relu_122,Relu,['Reshape_133'],788083,788083
+125,Reshape_133,Reshape,['Reshape_147'],-1,364712
+126,Reshape_147,Reshape,['Conv_150'],-1,364712
+127,Conv_150,Conv,['Reshape_160'],409914,2237562
+128,Reshape_160,Reshape,['Reshape_1190'],-1,38856
+129,Reshape_1190,Reshape,['Transpose_1193'],-1,38856
+130,Transpose_1193,Transpose,['Reshape_1200'],-1,112839
+131,Reshape_1200,Reshape,['MatMul_1223'],-1,38856
+132,MatMul_1223,MatMul,['Add_1225'],-1,981752
+133,Add_1225,Add,['Reshape_1233'],-1,128156
+134,Reshape_1233,Reshape,['Reshape_1328'],-1,38856
+135,Reshape_1328,Reshape,['Transpose_1329'],-1,38856
+136,Transpose_1329,Transpose,['Reshape_1336'],-1,112839
+137,Reshape_1336,Reshape,['grid_sampler_1352'],-1,38856
+138,grid_sampler_1352,grid_sampler,['Unsqueeze_1363'],300,300
+139,Unsqueeze_1363,Unsqueeze,"['Shape_1365', 'Reshape_1372']",-1,138606
+140,Shape_1365,Shape,['Slice_1369'],300,300
+141,Slice_1369,Slice,['Concat_1371'],-1,138981
+142,Concat_1371,Concat,['Reshape_1372'],139904,139904
+143,Reshape_1372,Reshape,['Mul_1373'],-1,143690
+144,Mul_1373,Mul,['ReduceSum_1374'],-1,140045
+145,ReduceSum_1374,ReduceSum,['Reshape_1380'],-1,404743
+146,Reshape_1380,Reshape,['Transpose_1381'],-1,169761
+147,Transpose_1381,Transpose,['Reshape_1390'],-1,112839
+148,Reshape_1390,Reshape,"['Gather_1394', 'Gather_1436', 'Gather_1478', 'Gather_1520', 'Gather_1562', 'Gather_1604']",-1,38856
+149,Gather_1394,Gather,['Gather_1396'],-1,31524
+150,Gather_1436,Gather,['Gather_1438'],-1,31524
+151,Gather_1478,Gather,['Gather_1480'],-1,31524
+152,Gather_1520,Gather,['Gather_1522'],-1,31524
+153,Gather_1562,Gather,['Gather_1564'],-1,31524
+154,Gather_1604,Gather,['Gather_1606'],-1,31524
+155,Gather_1396,Gather,['Slice_1401'],-1,6342
+156,Gather_1438,Gather,['Slice_1443'],-1,6342
+157,Gather_1480,Gather,['Slice_1485'],-1,6342
+158,Gather_1522,Gather,['Slice_1527'],-1,6342
+159,Gather_1564,Gather,['Slice_1569'],-1,6342
+160,Gather_1606,Gather,['Slice_1611'],-1,6342
+161,Slice_1401,Slice,['Add_1402'],-1,139803
+162,Slice_1443,Slice,['Add_1444'],-1,138914
+163,Slice_1485,Slice,['Add_1486'],-1,138914
+164,Slice_1527,Slice,['Add_1528'],-1,139803
+165,Slice_1569,Slice,['Add_1570'],-1,138914
+166,Slice_1611,Slice,['Add_1612'],-1,138914
+167,Add_1402,Add,['Reshape_1430'],-1,158309
+168,Reshape_1430,Reshape,['ScatterND_1431'],-1,144579
+169,ScatterND_1431,ScatterND,"['Gather_1433', 'ScatterND_1473']",-1,213971
+170,Gather_1433,Gather,['Gather_1434'],-1,127821
+171,Gather_1434,Gather,['Add_1444'],-1,119159
+172,Add_1444,Add,['Reshape_1472'],-1,153971
+173,Reshape_1472,Reshape,['ScatterND_1473'],-1,143690
+174,ScatterND_1473,ScatterND,"['Gather_1475', 'ScatterND_1515']",-1,213971
+175,Gather_1475,Gather,['Gather_1476'],-1,127821
+176,Gather_1476,Gather,['Add_1486'],-1,119159
+177,Add_1486,Add,['Reshape_1514'],-1,153971
+178,Reshape_1514,Reshape,['ScatterND_1515'],-1,143690
+179,ScatterND_1515,ScatterND,"['Gather_1517', 'ScatterND_1557']",-1,213971
+180,Gather_1517,Gather,['Gather_1518'],-1,127821
+181,Gather_1518,Gather,['Add_1528'],-1,120048
+182,Add_1528,Add,['Reshape_1556'],-1,107177
+183,Reshape_1556,Reshape,['ScatterND_1557'],-1,144579
+184,ScatterND_1557,ScatterND,"['Gather_1559', 'ScatterND_1599']",-1,213971
+185,Gather_1559,Gather,['Gather_1560'],-1,127821
+186,Gather_1560,Gather,['Add_1570'],-1,119159
+187,Add_1570,Add,['Reshape_1598'],-1,152957
+188,Reshape_1598,Reshape,['ScatterND_1599'],-1,143690
+189,ScatterND_1599,ScatterND,"['Gather_1601', 'ScatterND_1641']",-1,213971
+190,Gather_1601,Gather,['Gather_1602'],-1,127821
+191,Gather_1602,Gather,['Add_1612'],-1,119159
+192,Add_1612,Add,['Reshape_1640'],-1,152092
+193,Reshape_1640,Reshape,['ScatterND_1641'],-1,143690
+194,ScatterND_1641,ScatterND,['Div_1658'],-1,213971
+195,Div_1658,Div,['MatMul_1661'],-1,4049666
+196,MatMul_1661,MatMul,['Add_1663'],-1,543733
+197,Add_1663,Add,['Add_1664'],-1,67258
+198,Add_1664,Add,"['ReduceMean_1665', 'Sub_1666']",-1,67258
+199,ReduceMean_1665,ReduceMean,['Sub_1666'],-1,384847
+200,Sub_1666,Sub,"['Mul_1667', 'Mul_1673']",-1,67258
+201,Mul_1667,Mul,['ReduceMean_1668'],-1,31610
+202,ReduceMean_1668,ReduceMean,['Add_1670'],-1,384847
+203,Add_1670,Add,['Sqrt_1671'],-1,144300
+204,Sqrt_1671,Sqrt,['Reciprocal_1672'],-1,141591
+205,Reciprocal_1672,Reciprocal,['Mul_1673'],-1,340873
+206,Mul_1673,Mul,['Mul_1675'],-1,31610
+207,Mul_1675,Mul,['Add_1677'],-1,31610
+208,Add_1677,Add,['Transpose_1678'],-1,67258
+209,Transpose_1678,Transpose,['Reshape_1688'],-1,144803
+210,Reshape_1688,Reshape,['Reshape_1706'],-1,134681
+211,Reshape_1706,Reshape,['Transpose_1707'],-1,134720
+212,Transpose_1707,Transpose,"['MatMul_1719', 'MatMul_1732', 'MatMul_1828']",-1,144803
+213,MatMul_1719,MatMul,['Add_1721'],-1,543733
+214,MatMul_1732,MatMul,['Add_1734'],-1,155840
+215,MatMul_1828,MatMul,['Add_1830'],-1,146913
+216,Add_1721,Add,['Reshape_1729'],-1,67258
+217,Add_1734,Add,['Reshape_1742'],-1,155457
+218,Add_1830,Add,['Reshape_1838'],-1,149051
+219,Reshape_1729,Reshape,['Transpose_1870'],-1,122964
+220,Reshape_1742,Reshape,['Div_1824'],-1,144238
+221,Reshape_1838,Reshape,['Softmax_1839'],-1,143690
+222,Transpose_1870,Transpose,['Reshape_1877'],-1,97096
+223,Div_1824,Div,['Add_1825'],-1,341421
+224,Softmax_1839,Softmax,['Reshape_1845'],-1,143127
+225,Reshape_1877,Reshape,['grid_sampler_1895'],-1,134720
+226,Add_1825,Add,['Mul_1865'],-1,156005
+227,Reshape_1845,Reshape,['Reshape_1901'],-1,143690
+228,Mul_1865,Mul,['Sub_1867'],-1,144475
+229,Reshape_1901,Reshape,['Transpose_1902'],-1,143690
+230,Sub_1867,Sub,['Reshape_1885'],-1,156005
+231,Transpose_1902,Transpose,['Reshape_1910'],-1,142097
+232,Reshape_1885,Reshape,['Transpose_1886'],-1,144238
+233,Reshape_1910,Reshape,['Concat_1911'],-1,143690
+234,Transpose_1886,Transpose,['Reshape_1894'],-1,144856
+235,Concat_1911,Concat,['Concat_1912'],144924,144924
+236,Reshape_1894,Reshape,['grid_sampler_1895'],-1,144238
+237,Concat_1912,Concat,['Concat_1913'],45741,45741
+238,grid_sampler_1895,grid_sampler,['Mul_1914'],300,300
+239,Concat_1913,Concat,['Mul_1914'],103797,103797
+240,Mul_1914,Mul,['ReduceSum_1915'],-1,428111
+241,ReduceSum_1915,ReduceSum,['Reshape_1921'],-1,309397
+242,Reshape_1921,Reshape,['Transpose_1922'],-1,134720
+243,Transpose_1922,Transpose,['MatMul_1925'],-1,144803
+244,MatMul_1925,MatMul,['Add_1927'],-1,543733
+245,Add_1927,Add,"['ReduceMean_1928', 'Sub_1929']",-1,67258
+246,ReduceMean_1928,ReduceMean,['Sub_1929'],-1,384847
+247,Sub_1929,Sub,"['Mul_1930', 'Mul_1936']",-1,67258
+248,Mul_1930,Mul,['ReduceMean_1931'],-1,31610
+249,ReduceMean_1931,ReduceMean,['Add_1933'],-1,384847
+250,Add_1933,Add,['Sqrt_1934'],-1,144300
+251,Sqrt_1934,Sqrt,['Reciprocal_1935'],-1,141591
+252,Reciprocal_1935,Reciprocal,['Mul_1936'],-1,340873
+253,Mul_1936,Mul,['Mul_1938'],-1,31610
+254,Mul_1938,Mul,['Add_1940'],-1,31610
+255,Add_1940,Add,['Transpose_1941'],-1,67258
+256,Transpose_1941,Transpose,['Reshape_1953'],-1,144803
+257,Reshape_1953,Reshape,[],-1,134681
