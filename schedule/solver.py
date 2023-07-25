@@ -285,7 +285,7 @@ class ILPSolver(Solver):
                 )
                 for i in self.graph.topo_sort():
                     for j in self.chip.processors:
-                        pp(f"x of {i}, {j.id} = {self.x[i, j.id].value()}")
+                        pp(f"x of {i}, {j.id} = {self.x[i, j.id].X}")
                 exit(-1)
 
 

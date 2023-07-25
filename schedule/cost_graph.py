@@ -85,6 +85,9 @@ class GraphCost(object):
     def get_op_cost_one_device(self, id, d):
         return self.get_op_cost(id).get_cost_of_device(d)
 
+    def draw_graph_structure(self, pdf_file):
+        tmp = nx.nx_agraph.to_agraph(self.nx_graph)
+        tmp.draw(pdf_file, prog="dot")
 
     def to_df(self):
         backends = self.get_op_cost(0).get_backend_ids()
