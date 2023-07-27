@@ -1,4 +1,3 @@
-
 """
 This file will model and solve the problem with ILP
 """
@@ -16,27 +15,15 @@ from .cost_graph import *
 
 MAX_FLOAT = 1e20
 
+
 class Solver(object):
-
-    def __init__(self, g : GraphCost, chip : Chip) -> None:
-        self.graph = g
+    def __init__(self, g: GraphCost, chip: Chip) -> None:
+        self.graph = DispatchedGraph(g)
         self.chip = chip
-        self.dispatch_results = {}
-
-    def draw_results(self, pdf_file):
-        # Update node assignment
-        for i in self.operations:
-            for j in self.hardware.processors:
-                if self.dispatch_results[i].id == j.id:
-                    self.nx_graph.nodes[i]["color"] = j.color
-
-        tmp = nx.nx_agraph.to_agraph(self.nx_graph)  # convert to a graphviz graph
-        tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
-        pass
 
     def rectify(self):
         for op in self.operations:
-            if self.cost[op][self.dispatch_results[op].type] <= 0:
+            if self.cost[op][self.graph.get_dispatch(op).type] <= 0:
                 sel_p = None
                 min_time = 2**32
                 for p in self.hardware.processors:
@@ -48,13 +35,11 @@ class Solver(object):
                         min_time = self.cost[op][p.type]
                         sel_p = p
 
-                self.dispatch_results[op] = sel_p
-                print("wrong for ", op)
-            
+                self.graph.set_dispatch(op, sel_p)
+
 
 class MinimalSolver(Solver):
-
-    def __init__(self, g : GraphCost, chip : Chip) -> None:
+    def __init__(self, g: GraphCost, chip: Chip) -> None:
         super().__init__(g, chip)
 
     def solve(self):
@@ -70,7 +55,8 @@ class MinimalSolver(Solver):
                     min_time = c
                     sel_p = proc
 
-            self.dispatch_results[op] = sel_p
+            self.graph.set_dispatch(op, sel_p)
+
 
 class ILPSolver(Solver):
     def __init__(self, g, chip: Chip) -> None:
@@ -95,7 +81,9 @@ class ILPSolver(Solver):
         self.st = {}
         self.ft = {}
         for op in self.graph.topo_sort():
-            self.st[op] = self.problem.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"st_{op}")
+            self.st[op] = self.problem.addVar(
+                vtype=GRB.CONTINUOUS, lb=0, name=f"st_{op}"
+            )
             self.ft[op] = self.st[op] + self.cost_of_op(op)
 
         self.avail_proc = {}
@@ -114,11 +102,12 @@ class ILPSolver(Solver):
         print(self.problem.Params.SolutionLimit)
         print(self.problem.Params.NodefileStart)
 
-        self.problem.Params.Threads = 16
-        self.problem.Params.NodefileStart = 1024*32
-        self.problem.Params.NodeLimit = 1000000
-        self.problem.Params.SolutionLimit = 100
-
+        self.problem.Params.Threads = 32
+        self.problem.Params.NodefileStart = 1024 * 32
+        # set time limit to 20 hours
+        self.problem.Params.TimeLimit = 17*3600 
+        # self.problem.Params.NodeLimit = 1000000
+        # self.problem.Params.SolutionLimit = 10
 
     def get_execution_order(self):
         st_node = []
@@ -130,7 +119,8 @@ class ILPSolver(Solver):
 
     def cost_of_op(self, op_idx):
         return gp.quicksum(
-            self.x[op_idx, proc.id] * self.graph.get_op_cost_one_device(op_idx, proc.type)
+            self.x[op_idx, proc.id]
+            * self.graph.get_op_cost_one_device(op_idx, proc.type)
             for proc in self.chip.processors
         )
 
@@ -143,23 +133,22 @@ class ILPSolver(Solver):
 
         self.problem.setObjective(last_node, GRB.MINIMIZE)
 
-
     def print_problem(self):
         print("problem objective: ", self.problem.objective)
         print("problem constraints:")
         pp(self.problem.constraints)
-        
+
         print("Start and finish time: ")
         for node in self.operations:
             print(f"{node} st : {self.st[node].value()}")
             print(f"{node} ft : {self.ft[node].value()}")
-
 
     def find_parallel_nodes(self):
         """
         return pairs of nodes that has no dependency
         (n1, n2), (n3, n4)
         """
+
         def __find_unreachable_pairs(graph):
             pairs = []
             nodes = list(nx.topological_sort(graph))
@@ -172,11 +161,11 @@ class ILPSolver(Solver):
                         print(f"add {node1} -> {node2}")
                         pairs.append((node1, node2))
                         continue
-                    
+
             return pairs
 
         return __find_unreachable_pairs(self.graph.nx_graph)
-        
+
     def add_constraints(self):
         """
         for (n, m) n, and m are parallel
@@ -197,7 +186,6 @@ class ILPSolver(Solver):
                     if cost.get_cost_of_device(proc.type) <= 0:
                         self.problem.addConstr(self.x[node, proc.id] == 0)
 
-
         def constraint_st_ft():
             """
             1. Constraints that node a starts after its previous nodes
@@ -213,7 +201,7 @@ class ILPSolver(Solver):
         def constraint_proc_assign():
             """
             Constraints every node
-            if x[n][h] == x[m][h] == 1: 
+            if x[n][h] == x[m][h] == 1:
                 ft[n] <= st[m] or ft[m] <= st[n]  // n and m can not be overlapped
             """
 
@@ -229,7 +217,9 @@ class ILPSolver(Solver):
             y = {}
             for n, m in parallel_nodes:
                 for h in self.chip.processors:
-                    y[n, m, h.id] = self.problem.addVar(vtype=GRB.BINARY, name=f"y_{n}_{m}_{h.id}")
+                    y[n, m, h.id] = self.problem.addVar(
+                        vtype=GRB.BINARY, name=f"y_{n}_{m}_{h.id}"
+                    )
 
             for n, m in parallel_nodes:
                 for h in self.chip.processors:
@@ -239,7 +229,9 @@ class ILPSolver(Solver):
                     cond = self.ft[n] - self.st[m] + (2 * M) * (xn + xm - 2) <= M * yy
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h.id}")
 
-                    cond = self.ft[m] - self.st[n] + (2 * M) * (xn + xm - 2) <= M * (1 - yy)
+                    cond = self.ft[m] - self.st[n] + (2 * M) * (xn + xm - 2) <= M * (
+                        1 - yy
+                    )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h.id}")
 
         constraint_x()
@@ -250,7 +242,7 @@ class ILPSolver(Solver):
         self.objective_func()
         self.add_constraints()
         self.problem.optimize()
-        #self.print_problem()
+        # self.print_problem()
         self.problem.write("schedule.lp")
         self.get_device_dispatch_results()
         # self.rectify()
@@ -265,12 +257,11 @@ class ILPSolver(Solver):
     def get_device_dispatch_results(self):
         order = self.get_execution_order()
         for i in order:
-            print(i)
             has_dispatched = False
             for j in self.chip.processors:
                 if self.x[i, j.id].X == 1:
                     has_dispatched = True
-                    self.dispatch_results[i] = j.id
+                    self.graph.set_dispatch(i, j)
 
             if not has_dispatched:
                 logging.warning(
@@ -282,7 +273,7 @@ class ILPSolver(Solver):
                 exit(-1)
 
 
-def solveDag(solverType, g: GraphCost, chip : Chip, f=None):
+def solveDag(solverType, g: GraphCost, chip: Chip, f=None):
     """
     solverType: solve class, e.g., ILPSolver/BasicSolver/...
     cost: the cost of each operation, e.g.,
@@ -302,4 +293,4 @@ def solveDag(solverType, g: GraphCost, chip : Chip, f=None):
     if f is not None:
         solver.draw_results(f)
 
-    return solver.dispatch_results
+    return solver.graph

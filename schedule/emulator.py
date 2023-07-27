@@ -7,7 +7,7 @@ Input:
   Execution order
   Processor dispatching
 """
-from .cost_graph import GraphCost, OpCost
+from .cost_graph import GraphCost, DispatchedGraph
 from .processor import Processor, Chip
 import numpy as np
 
@@ -37,23 +37,19 @@ class ExecTime(object):
     def get_total_time(self):
         return max([e.end for k,e in self.exec_time.items()])
 
-def async_emulation(graph: GraphCost, chip : Chip, exec_order, proc_dispatch):
+def async_emulation(graph: DispatchedGraph, chip : Chip):
     def validate():
-        assert isinstance(proc_dispatch, dict)
         assert isinstance(graph, GraphCost)
         assert isinstance(chip, Chip)
 
-        assert proc_dispatch.keys()
-        assert len(proc_dispatch.keys()) == len(exec_order)
-
-
+    exec_order = graph.get_exec_order()
     exec_time = ExecTime(exec_order)
 
     def run():
         avail_proc = {op : {p_id : 0 for p_id in chip.ids()} for op in exec_order}
 
         for i, op in enumerate(exec_order):
-            assigned_p = proc_dispatch[op]
+            assigned_p = graph.get_dispatch(op).id
 
             # current op cost
             op_cost = graph.get_op_cost_one_device(op, chip.get_processor_by_id(assigned_p).type)

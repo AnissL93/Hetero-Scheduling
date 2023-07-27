@@ -6,6 +6,10 @@ import networkx as nx
 import logging
 import pandas as pd
 import ast
+import networkx as nx
+from .color_combin import get_color_combination
+from .processor import *
+import copy
 
 from .processor import Chip, Processor
 
@@ -112,7 +116,79 @@ class GraphCost(object):
         """Dump the file to CSV format, converting with pandas."""
         self.to_df().to_csv(file_name)
 
-def read_csv(csv_file):
+
+class DispatchedGraph(GraphCost):
+    def __init__(self, graph : GraphCost = None, dispatch = {}):
+        if graph is not None:
+            self.__dict__.update(graph.__dict__)
+            self.dispatch_results = dispatch
+
+    def set_dispatch(self, n, p: Processor):
+        """
+        Dispatch node n to Processor p
+        """
+
+        assert n in self.topo_sort()
+        self.dispatch_results[n] = p
+
+    def validate(self):
+        for k, v in self.dispatch_results.items():
+            if v is None:
+                print(f"Error: node {k} is not dispatched!")
+                return False
+
+        return True
+
+
+    def draw_results(self, chip : Chip, pdf_file):
+        # Update node assignment
+        col = get_color_combination(len(chip.processors))
+        for i in self.get_exec_order():
+            for index, j in enumerate(chip.processors):
+                if self.dispatch_results[i].id == j.id:
+                    self.nx_graph.nodes[i]["color"] = col[index]
+                    self.nx_graph.nodes[i]["shape"] = "Mrecord"
+                    self.nx_graph.nodes[i]["style"] = "filled"
+                    self.nx_graph.nodes[i]["fontname"] = "Helvetica"
+
+        
+        # add a legend for graph
+
+        legend_head = "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"> <TR> <TD COLSPAN=\"1\"><B>Legend</B></TD> </TR>"
+        for i, p in enumerate(chip.processors):
+            legend_head += "<TR><TD BGCOLOR=\"{}\">{}</TD></TR>\n".format(col[i], p.id)
+
+        legend_head += "</TABLE>>"
+
+        tmp_graph = copy.deepcopy(self.nx_graph)
+        tmp_graph.add_node("Legend", label = legend_head, shape = "box")
+
+        # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
+        tmp = nx.nx_agraph.to_agraph(tmp_graph)  # convert to a graphviz graph
+        tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
+
+    def get_dispatch(self, n):
+        assert n in self.topo_sort() 
+        return self.dispatch_results[n]
+
+    def get_exec_order(self):
+        return list(self.dispatch_results.keys())
+
+    def dispatch_to_df(self):
+        assign = [self.dispatch_results[n] for n in self.get_exec_order()]
+        data = {
+            "op_id" : self.get_exec_order(),
+            "dispatch" : assign
+        }
+        ddf = pd.DataFrame(data)
+        return ddf
+
+    def dispatch_to_csv(self, dispatch_csv_file):
+        gdf = self.dispatch_to_df()
+        gdf.to_csv(dispatch_csv_file)
+
+        
+def read_csv(csv_file, dispatch_file = None, chip = None):
     def _parse_cost(df: pd.DataFrame):
         """
         op_id,op_type,suc,PType1_0,PType2_1...
@@ -151,12 +227,20 @@ def read_csv(csv_file):
         return net, cost, types 
 
     df = pd.read_csv(csv_file)
-
     net, cost, types = _parse_cost(df)
-
     graph = GraphCost(net, cost, types)
-    return graph
+    
+    if dispatch_file is None:
+        return graph
+    else:
+        # parse dispatch file
+        df = pd.read_csv(dispatch_file)
+        dispatch = {}
+        for i in range(len(df)):
+            dispatch[str(df.loc[i]["op_id"])] = chip.get_processor_by_id(df.loc[i]["dispatch"])
 
+        dgraph = DispatchedGraph(graph, dispatch)
+        return dgraph
     
 if __name__ == "__main__":
     graph = read_csv("../data/net_perf/bst/bert_with_shape.csv")

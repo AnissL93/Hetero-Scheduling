@@ -1,23 +1,23 @@
 """
 Define the unique name, type for devices.
 """
+
 class Processor(object):
 
-    def __init__(self, _id, _type, c) -> None:
+    def __init__(self, _id, _type) -> None:
         self.id = _id
         self.type = _type
-        self.color = c
         pass
 
     def __str__(self) -> str:
         return self.id
 
     def __hash__(self) -> int:
-        return hash((self.id, self.type, self.color))
+        return hash((self.id, self.type))
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, type(self)): return NotImplemented
-        return self.id == __value.id and self.type == __value.type and self.color == __value.color
+        return self.id == __value.id and self.type == __value.type
 
 class Chip(object):
 
@@ -57,17 +57,35 @@ class Chip(object):
 
 
 bst_chip = Chip([
-    Processor("MACA", "MACA", "blue"),
-    Processor("CV_DSP_0", "CV_DSP", "red"),
-    Processor("CV_DSP_1", "CV_DSP", "green")
+    Processor("MACA", "MACA"),
+    Processor("CV_DSP_0", "CV_DSP"),
+    Processor("CV_DSP_1", "CV_DSP")
 ])
   
-cpu_big = Processor("CPU_B", "CPU_B", "blue")
-cpu_small = Processor("CPU_S", "CPU_S", "red")
-gpu = Processor("GPU", "GPU", "green")
+cpu_big = Processor("CPU_B", "CPU_B")
+cpu_small = Processor("CPU_S", "CPU_S")
+gpu = Processor("GPU", "GPU")
 
-arm_chip = Chip(
+khadas_chip = Chip(
     [
         cpu_big, cpu_small, gpu
     ]
 )
+
+khadas_chip_cpu_only = Chip(
+    [
+        cpu_big, cpu_small 
+    ]
+)
+
+supported_chips = {
+    "khadas": khadas_chip,
+    "bst" : bst_chip,
+    "khadas_cpu_only": khadas_chip_cpu_only
+}
+
+# supported_processors = {
+#     "cpu_big" : cpu_big,
+#     "cpu_small" : cpu_small,
+#     "gpu" : gpu,
+# }
