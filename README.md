@@ -1,4 +1,10 @@
 
+Current situation:
+- Modeled only computation costs, tested on bst for all benchmarks, see results/bst
+
+Issue: 
+- Wether to use M or 2*M in the constraints?
+
 # ILP-based Heterogeneous scheduling solver and execution time estimation
 
 ## Dependency
@@ -10,6 +16,10 @@
 ```bash
 pip install -r requirements.txt
 ```
+
+Set Variables
+
+ HETERO_SCHEDULE_HOME
 
 
 ## Scheduling and the estimate
@@ -24,3 +34,4 @@ python scripts/solve_and_run_network.py --model data/net_perf/arm/InceptionV3_bl
 ```bash
 python scripts/run_network.py --model data/net_perf/arm/InceptionV3.csv --dispatch inceptionv3_dispatch.csv --chip khadas
 ```
+

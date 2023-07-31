@@ -86,13 +86,6 @@ class ILPSolver(Solver):
             )
             self.ft[op] = self.st[op] + self.cost_of_op(op)
 
-        self.avail_proc = {}
-        for op in self.graph.topo_sort():
-            for h_id in self.chip.ids():
-                self.avail_proc[op, h_id] = self.problem.addVar(
-                    vtype=GRB.CONTINUOUS, lb=0, name=f"avail_proc_{op}_{h_id}"
-                )
-
         self.limit_resource()
 
     def limit_resource(self):
@@ -226,10 +219,10 @@ class ILPSolver(Solver):
                     yy = y[n, m, h.id]
                     xn = self.x[n, h.id]
                     xm = self.x[m, h.id]
-                    cond = self.ft[n] - self.st[m] + (2 * M) * (xn + xm - 2) <= M * yy
+                    cond = self.ft[n] - self.st[m] + M * (xn + xm - 2) <= M * yy
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h.id}")
 
-                    cond = self.ft[m] - self.st[n] + (2 * M) * (xn + xm - 2) <= M * (
+                    cond = self.ft[m] - self.st[n] + M * (xn + xm - 2) <= M * (
                         1 - yy
                     )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h.id}")
