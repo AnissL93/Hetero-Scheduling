@@ -31,6 +31,13 @@ class Chip(object):
     def types(self) -> list:
         return [p.types for p in self.processors]
 
+    def types_set(self) -> list:
+        ret = []
+        for p in self.processors:
+            if p.type not in ret:
+                ret.append(p.type)
+        return ret
+
     def get_processor_by_type(self, type):
         for p in self.processors:
             if p.type == type:
@@ -44,6 +51,15 @@ class Chip(object):
                 return p
 
         return None
+
+    def get_combinations(self):
+        ret = []
+        for d1 in self.processors:
+            for d2 in self.processors:
+                if d1 != d2:
+                    ret.append([d1, d2])
+
+        return ret
 
     def __str__(self):
         ret = ""

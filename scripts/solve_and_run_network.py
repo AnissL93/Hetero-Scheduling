@@ -58,9 +58,9 @@ def main():
             p = pathlib.Path(dump)
             r.draw_results(supported_chips[chip], p.with_suffix(".pdf"))
             r.dispatch_to_csv(dispatch_csv_file= p.with_suffix(".dispatch.csv"))
-            
+            pass
 
-        logging.info("Total time: {}".format(t.get_total_time()))
+        logging.critical("Total time: {}".format(t.get_total_time()))
 
     else:
         logging.error(f"Unsupported backends, try: {list(supported_chips.keys())}")

@@ -15,7 +15,6 @@ from .cost_graph import *
 
 MAX_FLOAT = 1e20
 
-
 class Solver(object):
     def __init__(self, g: GraphCost, chip: Chip) -> None:
         self.graph = DispatchedGraph(g)
@@ -78,14 +77,36 @@ class ILPSolver(Solver):
                     vtype=GRB.BINARY, name=f"x_{op}_{h_id}"
                 )
 
+        self.comm_sel = {}
+
+        # get all edges
+        self.comm_sel = {}
+        for f, t in self.graph.get_edges():
+            for p1, p2 in self.chip.get_combinations():
+                self.comm_sel[f, t, p1, p2] = self.problem.addVar(
+                     vtype=GRB.BINARY, name=f"comm_sel_{f}_{t}_{p1.id}_{p2.id}"
+                )
+
         self.st = {}
-        self.ft = {}
+        self.ft_compute_only = {}
+        self.ft_with_comm = {}
         for op in self.graph.topo_sort():
             self.st[op] = self.problem.addVar(
                 vtype=GRB.CONTINUOUS, lb=0, name=f"st_{op}"
             )
-            self.ft[op] = self.st[op] + self.cost_of_op(op)
+            self.ft_compute_only[op] = self.st[op] + self.get_compute_cost(op) 
 
+        for f, t in self.graph.get_edges():
+            self.ft_with_comm[f, t] = self.get_comm_cost(f, t) + self.ft_compute_only[f]
+
+        def __max_cost(cost):
+            max_float = 0
+            for node in cost.keys():
+                max_v = max(list(cost[node].backends.values()))
+                max_float = max(max_v, max_float)
+            return max_float
+
+        self.M = __max_cost(self.graph.op_cost) + 100000000.0
         self.limit_resource()
 
     def limit_resource(self):
@@ -110,11 +131,18 @@ class ILPSolver(Solver):
         sorted_pairs = sorted(st_node, key=lambda x: x[0])
         return [x[1] for x in sorted_pairs]
 
-    def cost_of_op(self, op_idx):
+    def get_compute_cost(self, op_idx):
         return gp.quicksum(
             self.x[op_idx, proc.id]
             * self.graph.get_op_cost_one_device(op_idx, proc.type)
             for proc in self.chip.processors
+        )
+
+    def get_comm_cost(self, from_node, to_node):
+        return gp.quicksum(
+            self.comm_sel[from_node, to_node] * 
+            self.graph.get_op_comm_cost_one_device(from_node, to_node, d1, d2)
+            for d1, d2 in self.chip.proc_combinations
         )
 
     def objective_func(self):
@@ -122,7 +150,7 @@ class ILPSolver(Solver):
         exit_nodes = self.graph.get_exit_ops()
         last_node = self.problem.addVar(vtype=GRB.CONTINUOUS, name="x_exit_node")
         for n in exit_nodes:
-            self.problem.addConstr(last_node >= self.ft[n])
+            self.problem.addConstr(last_node >= self.ft_compute_only[n])
 
         self.problem.setObjective(last_node, GRB.MINIMIZE)
 
@@ -132,9 +160,9 @@ class ILPSolver(Solver):
         pp(self.problem.constraints)
 
         print("Start and finish time: ")
-        for node in self.operations:
-            print(f"{node} st : {self.st[node].value()}")
-            print(f"{node} ft : {self.ft[node].value()}")
+        # for node in self.operations:
+        #     print(f"{node} st : {self.st[node].value()}")
+        #     print(f"{node} ft : {self.ft[node].value()}")
 
     def find_parallel_nodes(self):
         """
@@ -179,6 +207,20 @@ class ILPSolver(Solver):
                     if cost.get_cost_of_device(proc.type) <= 0:
                         self.problem.addConstr(self.x[node, proc.id] == 0)
 
+        def constraint_comm_sel():
+            """
+            Only one selection is true:
+                Sum(comm_sel[e1, e2]) == 1 for all device pairs
+            """
+            for f, t in self.graph.get_edges():
+                self.problem.quicksum(
+                    [
+                self.comm_sel[f, t, d1, d2]
+                for d1, d2 in self.chip.get_combinations()
+                    ]
+                )
+
+
         def constraint_st_ft():
             """
             1. Constraints that node a starts after its previous nodes
@@ -188,7 +230,7 @@ class ILPSolver(Solver):
             for node in self.graph.topo_sort():
                 prevs = self.graph.prevs(node)
                 for prev in prevs:
-                    cond = self.st[node] >= self.ft[prev]
+                    cond = self.st[node] >= self.ft_with_comm[prev, node]
                     self.problem.addConstr(cond, f"dep_{node}-{prev}")
 
         def constraint_proc_assign():
@@ -198,15 +240,7 @@ class ILPSolver(Solver):
                 ft[n] <= st[m] or ft[m] <= st[n]  // n and m can not be overlapped
             """
 
-            def __max_cost(cost):
-                max_float = 0
-                for node in cost.keys():
-                    max_v = max(list(cost[node].backends.values()))
-                    max_float = max(max_v, max_float)
-                return max_float
-
             parallel_nodes = self.find_parallel_nodes()
-            M = __max_cost(self.graph.op_cost) + 100000000.0
             y = {}
             for n, m in parallel_nodes:
                 for h in self.chip.processors:
@@ -219,17 +253,28 @@ class ILPSolver(Solver):
                     yy = y[n, m, h.id]
                     xn = self.x[n, h.id]
                     xm = self.x[m, h.id]
-                    cond = self.ft[n] - self.st[m] + M * (xn + xm - 2) <= M * yy
+                    cond = self.ft_compute_only[n] - self.st[m] + self.M * (xn + xm - 2) <= self.M * yy
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h.id}")
 
-                    cond = self.ft[m] - self.st[n] + M * (xn + xm - 2) <= M * (
+                    cond = self.ft_compute_only[m] - self.st[n] + self.M * (xn + xm - 2) <= self.M * (
                         1 - yy
                     )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h.id}")
 
+        def constraint_comm_cost():
+            for f, t in self.graph.get_edges():
+                for d1, d2 in self.chip.get_combinations():
+                    sel = self.comm_sel[f, t, d1, d2]
+                    x_f = self.x[f][d1]
+                    x_t = self.x[t][d2]
+                    self.M * (1 - sel) + x_f + x_t >= 2
+                    self.M * sel - (x_f + x_t) >= -1
+
         constraint_x()
+        constraint_comm_sel()
         constraint_st_ft()
         constraint_proc_assign()
+        constraint_comm_cost()
 
     def solve(self):
         self.objective_func()
