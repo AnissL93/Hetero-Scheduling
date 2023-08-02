@@ -179,19 +179,22 @@ class GraphCost(object):
         # TODO(add fetch comm cost):
         pass
 
-    def get_op_comm_cost_one_device(self, from_node, to_node, d1, d2):
+    def get_op_comm_cost_for_device(self, from_node, to_node, d1, d2):
         # TODO(add fetch comm cost for dev):
-        return self.get_op_comm_cost(from_node, to_node).get_cost_of_device(d)
+        return self.get_op_comm_cost(from_node, to_node).get_cost_of_device(d1, d2)
 
     def get_op_cost_one_device(self, id, d):
-        return self.get_op_cost(id).get_cost_of_device(d)
+        if isinstance(d, Processor):
+            return self.get_op_cost(id).get_cost_of_device(d.id)
+        else:
+            return self.get_op_cost(id).get_cost_of_device(d)
 
     def draw_graph_structure(self, pdf_file):
         tmp = nx.nx_agraph.to_agraph(self.nx_graph)
         tmp.draw(pdf_file, prog="dot")
 
     def to_df(self, chip : Chip):
-        backends = chip.get_types()
+        backends = chip.types_set()
         columns = ["op_id", "op_type", "suc"] + backends
         data = []
         for op in self.topo_sort():
@@ -201,7 +204,7 @@ class GraphCost(object):
                 self.sucs(op)
                 ]
                 + 
-                [self.get_op_cost_one_device(op, d) for d in backends]
+                [self.get_op_cost_one_device(op, chip.get_processor_by_type(d).id) for d in backends]
                 )
 
         df = pd.DataFrame(data, columns=columns)
@@ -294,4 +297,4 @@ if __name__ == "__main__":
     print(df)
     graph.init_graph(df)
     graph.init_compute_cost(df, bst_chip)
-    print(graph.to_df())
+    print(graph.to_df(bst_chip))
