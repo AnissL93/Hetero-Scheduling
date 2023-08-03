@@ -61,6 +61,23 @@ class Chip(object):
 
         return ret
 
+    
+    def get_type_combinations(self):
+
+        def included(l, a, b):
+            for x in l:
+                if x[0] == a and x[1] == b:
+                    return True
+            return False
+
+        ret = []
+        for d1 in self.processors:
+            for d2 in self.processors:
+                if d1.type != d2.type and not included(ret, d1.type, d2.type):
+                    ret.append([d1.type, d2.type])
+
+        return ret
+
     def __str__(self):
         ret = ""
         for p in self.processors:

@@ -46,7 +46,7 @@ class MinimalSolver(Solver):
             sel_p = None
             min_time = 2**32
             for proc in self.chip.processors:
-                c = self.graph.get_op_cost_one_device(op, proc.type)
+                c = self.graph.get_compute_cost_one_device(op, proc.type)
                 if c <= 0:
                     continue
 
@@ -134,7 +134,7 @@ class ILPSolver(Solver):
     def get_compute_cost(self, op_idx):
         return gp.quicksum(
             self.x[op_idx, proc.id]
-            * self.graph.get_op_cost_one_device(op_idx, proc.type)
+            * self.graph.get_compute_cost_one_device(op_idx, proc.type)
             for proc in self.chip.processors
         )
 

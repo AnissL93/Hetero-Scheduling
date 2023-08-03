@@ -52,7 +52,7 @@ def async_emulation(graph: DispatchedGraph, chip : Chip):
             assigned_p = graph.get_dispatch(op).id
 
             # current op cost
-            op_cost = graph.get_op_cost_one_device(op, chip.get_processor_by_id(assigned_p).type)
+            op_cost = graph.get_compute_cost_one_device(op, chip.get_processor_by_id(assigned_p).type)
             if op_cost <=0:
                 print(f"Fatal: {op} cost is {op_cost}")
                 exit(-1)
