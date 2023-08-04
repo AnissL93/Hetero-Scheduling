@@ -82,9 +82,10 @@ class ILPSolver(Solver):
         # get all edges
         self.comm_sel = {}
         for f, t in self.graph.get_edges():
-            for p1, p2 in self.chip.get_combinations():
-                self.comm_sel[f, t, p1, p2] = self.problem.addVar(
-                     vtype=GRB.BINARY, name=f"comm_sel_{f}_{t}_{p1.id}_{p2.id}"
+            self.comm_sel[f, t] = {}
+            for p1, p2 in self.chip.get_id_combinations():
+                self.comm_sel[f, t][p1, p2] = self.problem.addVar(
+                     vtype=GRB.BINARY, name=f"comm_sel_{f}_{t}_{p1}_{p2}"
                 )
 
         self.st = {}
@@ -140,9 +141,9 @@ class ILPSolver(Solver):
 
     def get_comm_cost(self, from_node, to_node):
         return gp.quicksum(
-            self.comm_sel[from_node, to_node] * 
-            self.graph.get_op_comm_cost_one_device(from_node, to_node, d1, d2)
-            for d1, d2 in self.chip.proc_combinations
+            self.comm_sel[from_node, to_node][d1.id, d2.id] * 
+            self.graph.get_comm_cost_for_device(from_node, to_node, d1, d2)
+            for d1, d2 in self.chip.get_combinations()
         )
 
     def objective_func(self):
@@ -204,7 +205,7 @@ class ILPSolver(Solver):
 
                 cost = self.graph.get_op_cost(node)
                 for proc in self.chip.processors:
-                    if cost.get_cost_of_device(proc.type) <= 0:
+                    if cost.get_by_type(proc.type) <= 0:
                         self.problem.addConstr(self.x[node, proc.id] == 0)
 
         def constraint_comm_sel():
@@ -213,12 +214,12 @@ class ILPSolver(Solver):
                 Sum(comm_sel[e1, e2]) == 1 for all device pairs
             """
             for f, t in self.graph.get_edges():
-                self.problem.quicksum(
+                self.problem.addConstr(gp.quicksum(
                     [
-                self.comm_sel[f, t, d1, d2]
-                for d1, d2 in self.chip.get_combinations()
+                self.comm_sel[f, t][d1, d2]
+                for d1, d2 in self.chip.get_id_combinations()
                     ]
-                )
+                ) == 1)
 
 
         def constraint_st_ft():
@@ -263,10 +264,10 @@ class ILPSolver(Solver):
 
         def constraint_comm_cost():
             for f, t in self.graph.get_edges():
-                for d1, d2 in self.chip.get_combinations():
-                    sel = self.comm_sel[f, t, d1, d2]
-                    x_f = self.x[f][d1]
-                    x_t = self.x[t][d2]
+                for d1, d2 in self.chip.get_id_combinations():
+                    sel = self.comm_sel[f, t][d1, d2]
+                    x_f = self.x[f, d1]
+                    x_t = self.x[t, d2]
                     self.M * (1 - sel) + x_f + x_t >= 2
                     self.M * sel - (x_f + x_t) >= -1
 

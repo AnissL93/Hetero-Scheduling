@@ -61,6 +61,15 @@ class Chip(object):
 
         return ret
 
+    def get_id_combinations(self):
+        ret = []
+        for d1 in self.processors:
+            for d2 in self.processors:
+                if d1 != d2:
+                    ret.append([d1.id, d2.id])
+
+        return ret
+
     
     def get_type_combinations(self):
 
