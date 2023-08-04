@@ -12,8 +12,8 @@ import sys
 
 from .cost_graph import *
 
-
 MAX_FLOAT = 1e20
+
 
 class Solver(object):
     def __init__(self, g: GraphCost, chip: Chip) -> None:
@@ -24,7 +24,7 @@ class Solver(object):
         for op in self.operations:
             if self.cost[op][self.graph.get_dispatch(op).type] <= 0:
                 sel_p = None
-                min_time = 2**32
+                min_time = 2 ** 32
                 for p in self.hardware.processors:
                     c = self.cost[op][p.type]
                     if c <= 0:
@@ -44,7 +44,7 @@ class MinimalSolver(Solver):
     def solve(self):
         for op in self.operations:
             sel_p = None
-            min_time = 2**32
+            min_time = 2 ** 32
             for proc in self.chip.processors:
                 c = self.graph.get_compute_cost_one_device(op, proc.type)
                 if c <= 0:
@@ -85,7 +85,7 @@ class ILPSolver(Solver):
             self.comm_sel[f, t] = {}
             for p1, p2 in self.chip.get_id_combinations():
                 self.comm_sel[f, t][p1, p2] = self.problem.addVar(
-                     vtype=GRB.BINARY, name=f"comm_sel_{f}_{t}_{p1}_{p2}"
+                    vtype=GRB.BINARY, name=f"comm_sel_{f}_{t}_{p1}_{p2}"
                 )
 
         self.st = {}
@@ -95,7 +95,7 @@ class ILPSolver(Solver):
             self.st[op] = self.problem.addVar(
                 vtype=GRB.CONTINUOUS, lb=0, name=f"st_{op}"
             )
-            self.ft_compute_only[op] = self.st[op] + self.get_compute_cost(op) 
+            self.ft_compute_only[op] = self.st[op] + self.get_compute_cost(op)
 
         for f, t in self.graph.get_edges():
             self.ft_with_comm[f, t] = self.get_comm_cost(f, t) + self.ft_compute_only[f]
@@ -120,7 +120,7 @@ class ILPSolver(Solver):
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 17*3600 
+        self.problem.Params.TimeLimit = 17 * 3600
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
 
@@ -134,16 +134,18 @@ class ILPSolver(Solver):
 
     def get_compute_cost(self, op_idx):
         return gp.quicksum(
-            self.x[op_idx, proc.id]
-            * self.graph.get_compute_cost_one_device(op_idx, proc.type)
-            for proc in self.chip.processors
+            self.x[op_idx, proc_id]
+            * self.graph.get_compute_cost_one_device(op_idx, proc)
+            for proc_id, proc in self.chip.processors.items()
         )
 
     def get_comm_cost(self, from_node, to_node):
         return gp.quicksum(
-            self.comm_sel[from_node, to_node][d1.id, d2.id] * 
-            self.graph.get_comm_cost_for_device(from_node, to_node, d1, d2)
-            for d1, d2 in self.chip.get_combinations()
+            self.comm_sel[from_node, to_node][d1, d2] *
+            self.graph.get_comm_cost_for_device(from_node, to_node,
+                                                self.chip.get_processor_by_id(d1),
+                                                self.chip.get_processor_by_id(d2))
+            for d1, d2 in self.chip.get_id_combinations()
         )
 
     def objective_func(self):
@@ -200,13 +202,14 @@ class ILPSolver(Solver):
             """
             for node in self.graph.topo_sort():
                 self.problem.addConstr(
-                    gp.quicksum(self.x[node, h.id] for h in self.chip.processors) == 1
+                    gp.quicksum(self.x[node, h_id] for h_id in self.chip.ids()) == 1
                 )
 
-                cost = self.graph.get_op_cost(node)
-                for proc in self.chip.processors:
+                cost = self.graph.get_compute_cost(node)
+                for id in self.chip.ids():
+                    proc = self.chip.get_processor_by_id(id)
                     if cost.get_by_type(proc.type) <= 0:
-                        self.problem.addConstr(self.x[node, proc.id] == 0)
+                        self.problem.addConstr(self.x[node, id] == 0)
 
         def constraint_comm_sel():
             """
@@ -216,11 +219,10 @@ class ILPSolver(Solver):
             for f, t in self.graph.get_edges():
                 self.problem.addConstr(gp.quicksum(
                     [
-                self.comm_sel[f, t][d1, d2]
-                for d1, d2 in self.chip.get_id_combinations()
+                        self.comm_sel[f, t][d1, d2]
+                        for d1, d2 in self.chip.get_id_combinations()
                     ]
                 ) == 1)
-
 
         def constraint_st_ft():
             """
@@ -244,23 +246,23 @@ class ILPSolver(Solver):
             parallel_nodes = self.find_parallel_nodes()
             y = {}
             for n, m in parallel_nodes:
-                for h in self.chip.processors:
-                    y[n, m, h.id] = self.problem.addVar(
-                        vtype=GRB.BINARY, name=f"y_{n}_{m}_{h.id}"
+                for h in self.chip.ids():
+                    y[n, m, h] = self.problem.addVar(
+                        vtype=GRB.BINARY, name=f"y_{n}_{m}_{h}"
                     )
 
             for n, m in parallel_nodes:
-                for h in self.chip.processors:
-                    yy = y[n, m, h.id]
-                    xn = self.x[n, h.id]
-                    xm = self.x[m, h.id]
+                for h in self.chip.ids():
+                    yy = y[n, m, h]
+                    xn = self.x[n, h]
+                    xm = self.x[m, h]
                     cond = self.ft_compute_only[n] - self.st[m] + self.M * (xn + xm - 2) <= self.M * yy
-                    self.problem.addConstr(cond, f"pair_{n}_{m}_{h.id}")
+                    self.problem.addConstr(cond, f"pair_{n}_{m}_{h}")
 
                     cond = self.ft_compute_only[m] - self.st[n] + self.M * (xn + xm - 2) <= self.M * (
-                        1 - yy
+                            1 - yy
                     )
-                    self.problem.addConstr(cond, f"pair_{m}_{n}_{h.id}")
+                    self.problem.addConstr(cond, f"pair_{m}_{n}_{h}")
 
         def constraint_comm_cost():
             for f, t in self.graph.get_edges():
@@ -297,8 +299,8 @@ class ILPSolver(Solver):
         order = self.get_execution_order()
         for i in order:
             has_dispatched = False
-            for j in self.chip.processors:
-                if self.x[i, j.id].X == 1:
+            for j in self.chip.ids():
+                if self.x[i, j].X == 1:
                     has_dispatched = True
                     self.graph.set_dispatch(i, j)
 
@@ -307,8 +309,8 @@ class ILPSolver(Solver):
                     f"Error: {i} is not dispatched, dispatch to the one with minimum cost"
                 )
                 for i in self.graph.topo_sort():
-                    for j in self.chip.processors:
-                        pp(f"x of {i}, {j.id} = {self.x[i, j.id].X}")
+                    for j in self.chip.ids():
+                        pp(f"x of {i}, {j} = {self.x[i, j].X}")
                 exit(-1)
 
 
