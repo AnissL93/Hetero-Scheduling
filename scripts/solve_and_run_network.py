@@ -15,6 +15,11 @@ import argparse
 import pathlib
 import datetime
 
+logging.basicConfig(
+            level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
+            datefmt='%Y-%m-%d %H:%M:%S'  # (Optional) Set the date format
+        )
 # Get the current timestamp with microsecond precision
 
 def get_log_file_name(model_file):
@@ -58,15 +63,15 @@ def main():
     dump = args.dump
     log = args.log
 
+
     if log is not None:
-        full_path = get_log_file_name(model)
-        print(f"Enable logging, store log to {full_path}")
-        logging.basicConfig(
-            level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
-            datefmt='%Y-%m-%d %H:%M:%S',  # (Optional) Set the date format
-            filename=full_path
-        )
+        log_path = get_log_file_name(model)
+        print(f"Enable logging, store log to {log_path}")
+
+        file_handler = logging.FileHandler(log_path) 
+        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        file_handler.setFormatter(logging.Formatter(log_format))
+        logging.getLogger("").addHandler(file_handler)
 
     if chip in supported_chips.keys():
         r, t = run_network_scheduling(model, supported_chips[chip])
