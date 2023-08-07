@@ -13,12 +13,18 @@ from schedule.emulator import async_emulation
 import logging
 import argparse
 import pathlib
+import datetime
 
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
-    datefmt='%Y-%m-%d %H:%M:%S'  # (Optional) Set the date format
-)
+# Get the current timestamp with microsecond precision
+
+def get_log_file_name(model_file):
+    file_name = pathlib.Path(model_file).stem
+    current_timestamp = datetime.datetime.now().timestamp()
+    date_time = datetime.datetime.fromtimestamp(current_timestamp)
+    str_date_time = date_time.strftime("%d-%m-%Y-%H:%M:%S")
+    home = os.environ.get("HETERO_SCHEDULE_HOME")
+    log_file = home + "/log/" + file_name + "-" + str_date_time + ".log"
+    return log_file
 
 def run_network_scheduling(model, chip):
     df_graph = pd.read_csv(model)
@@ -33,7 +39,7 @@ def get_args():
                         help="Model file in csv format, including graph structure, compute cost and communication cost.")
     parser.add_argument("--chip", type=str, required=True, help="Chip type, supporting bst, khadas and khadas_cpu_only")
     parser.add_argument("--dump", type=str, help="The prefix of dumping path")
-
+    parser.add_argument("--log", help="Log file", action="store_true")
     return parser.parse_args()
 
 
@@ -50,19 +56,29 @@ def main():
     model = args.model
     chip = args.chip
     dump = args.dump
+    log = args.log
+
+    if log is not None:
+        full_path = get_log_file_name(model)
+        print(f"Enable logging, store log to {full_path}")
+        logging.basicConfig(
+            level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
+            datefmt='%Y-%m-%d %H:%M:%S',  # (Optional) Set the date format
+            filename=full_path
+        )
 
     if chip in supported_chips.keys():
         r, t = run_network_scheduling(model, supported_chips[chip])
+        logging.critical("Total time: {}".format(t.get_total_time()))
+
         if dump is not None:
             p = pathlib.Path(dump)
             r.draw_results(supported_chips[chip], p.with_suffix(".pdf"))
             r.dispatch_to_csv(dispatch_csv_file=p.with_suffix(".dispatch.csv"))
-            pass
-
-        logging.critical("Total time: {}".format(t.get_total_time()))
 
     else:
         logging.error(f"Unsupported backends, try: {list(supported_chips.keys())}")
 
-
 main()
+

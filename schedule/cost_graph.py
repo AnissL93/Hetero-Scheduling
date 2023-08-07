@@ -137,40 +137,25 @@ class GraphCost(object):
                 self.op_cost[node_id] = compute_c
 
                 # communication
+                # init comm_cost to 0
                 for suc in suc_nodes:
-                    comm_c = CommCost()
-                    for d1, d2 in chip.get_type_combinations():
-                        dkey = str([d1.type, d2.type])
-                        costs = ast.literal_eval(node[dkey])
-                        for c in costs:
-                            comm_c.set(d1, d2, c)
+                    self.comm_cost[node_id, suc] = CommCost()
 
-                    self.comm_cost[node_id, suc] = comm_c
+                for d1, d2 in chip.get_type_combinations():
+                    dkey = str([d1.type, d2.type])
+                    for i, suc in enumerate(suc_nodes):
+                        if dkey in node.keys():
+                            costs = ast.literal_eval(node[dkey])
+                            assert len(costs) == len(suc_nodes)
+                            self.comm_cost[node_id, suc].set(d1, d2, costs[i])
+                        else:
+                            self.comm_cost[node_id, suc].set(d1, d2, 0)
+                            logging.error("No communication is found, set cummunication to 0")
+                    pass
+
 
         _parse_structure()
         self.topo_sort_ops = list(nx.topological_sort(self.nx_graph))
-
-    # def init_compute_cost(self, df : pd.DataFrame):
-    #     for i in range(len(df)):
-    #         node = df.loc[i]
-    #         node_id = str(node["op_id"])
-    #         c = {}
-    #         for p in self.chip.types_set():
-    #             c[p] = node[p.type]
-    #
-    #         self.op_cost[node_id] = OpCost(c)
-    #
-    # def init_comm_cost(self, df :pd.DataFrame):
-    #     for i in range(len(df)):
-    #         instance = df.loc[i]
-    #         node_pair = ast.literal_eval(str(instance["op_pair"]))
-    #         assert isinstance(node_pair, list) and len(node_pair) == 2
-    #         cc = CommCost()
-    #         for d1, d2 in self.chip.get_type_combinations():
-    #             dkey = str([d1, d2])
-    #             cc.set(d1, d2, instance[dkey])
-    #
-    #         self.comm_cost[node_pair[0], node_pair[1]] = cc
 
     def topo_sort(self):
         return self.topo_sort_ops
@@ -298,13 +283,11 @@ class GraphCost(object):
         data.update(get_sucs())
         data.update(get_compute_costs())
         data.update(get_comm_costs())
-        print(data)
         return pd.DataFrame(data)
 
     def to_csv(self, file_name):
         """Dump the file to CSV format, converting with pandas."""
         self.to_df().to_csv(file_name)
-
 
 class DispatchedGraph(GraphCost):
     def __init__(self, graph: GraphCost = None, dispatch={}):
@@ -322,7 +305,7 @@ class DispatchedGraph(GraphCost):
     def validate(self):
         for k, v in self.dispatch_results.items():
             if v is None:
-                print(f"Error: node {k} is not dispatched!")
+                logging.error(f"Error: node {k} is not dispatched!")
                 return False
 
         return True
@@ -378,10 +361,18 @@ class DispatchedGraph(GraphCost):
         gdf = self.dispatch_to_df()
         gdf.to_csv(dispatch_csv_file)
 
+    def get_dispatched_comm_cost(self, f, t):
+        p_f = self.chip.get_processor_by_id(self.get_dispatch(f))
+        p_t = self.chip.get_processor_by_id(self.get_dispatch(t))
+        return self.get_comm_cost_for_device(f, t, p_f, p_t)
+
+    def get_dispatched_compute_cost(self, op):
+        p = self.chip.get_processor_by_id(self.get_dispatch(op))
+        return self.get_compute_cost_one_device(op, p)
+
 
 if __name__ == "__main__":
     df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
-    df_comm = pd.read_csv("data/net_perf/bst/inception_v1_comm.csv")
     graph = GraphCost(df, bst_chip)
     # # print(df)
     df = graph.to_df()
@@ -390,7 +381,7 @@ if __name__ == "__main__":
 
     # read communication
     def preprocess_comm():
-        df = pd.read_csv("data/net_perf/bst/inception_v1_block_compute.csv")
+        df = pd.read_csv("data/net_perf/bst/inception_v1_detail.csv")
         data = {
             "op_id": df["op_id"],
             "op_type": df["op_type"],
@@ -398,15 +389,16 @@ if __name__ == "__main__":
         }
 
         for p in bst_chip.types_set():
-            data[p] = df[p]
+            data[p.type] = df[p.type]
 
         # communication
         for p1, p2 in bst_chip.get_type_combinations():
-            data[str([p1, p2])] = []
+            data[str([p1.type, p2.type])] = []
 
         # i->suc
         for i in range(len(df["op_id"])):
             ainstance = df.loc[i]
+            print(ainstance)
             write_f = int(ainstance["write"])
             comm_cost = []
             for suc in ast.literal_eval(ainstance["suc"]):
@@ -414,16 +406,12 @@ if __name__ == "__main__":
                 comm_cost.append(write_f + read_t)
 
             for p1, p2 in bst_chip.get_type_combinations():
-                data[str([p1, p2])].append(str(comm_cost))
+                data[str([p1.type, p2.type])].append(str(comm_cost))
                 pass
 
-        print("=---------------")
-        print(type(data))
-        print(data.keys())
-        print(data["['MACA', 'CV_DSP']"])
 
         df_comm = pd.DataFrame(data)
-        df_comm.to_csv("inception_v1_block_comm.csv")
+        df_comm.to_csv("inception_v1_with_comm.csv")
         pass
 
-    # preprocess_comm()
+    preprocess_comm()

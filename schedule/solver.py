@@ -111,18 +111,19 @@ class ILPSolver(Solver):
         self.limit_resource()
 
     def limit_resource(self):
-        print(self.problem.Params.Threads)
-        print(self.problem.Params.OutputFlag)
-        print(self.problem.Params.NodeLimit)
-        print(self.problem.Params.SolutionLimit)
-        print(self.problem.Params.NodefileStart)
-
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 17 * 3600
+        self.problem.Params.TimeLimit = 1 * 3600
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
+
+        logging.info(self.problem.Params.Threads)
+        logging.info(self.problem.Params.OutputFlag)
+        logging.info(self.problem.Params.NodeLimit)
+        logging.info(self.problem.Params.SolutionLimit)
+        logging.info(self.problem.Params.NodefileStart)
+
 
     def get_execution_order(self):
         st_node = []
