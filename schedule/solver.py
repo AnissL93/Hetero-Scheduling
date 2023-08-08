@@ -141,11 +141,19 @@ class ILPSolver(Solver):
         )
 
     def get_comm_cost(self, from_node, to_node):
-        return gp.quicksum(
-            self.comm_sel[from_node, to_node][d1, d2] *
-            self.graph.get_comm_cost_for_device(from_node, to_node,
+
+        def get_comm_cost(d1, d2):
+            if d1 == d2:
+                print("rrrrrrrrrrrr return 0 for ", d1, d2)
+                return 0
+            else:
+                return self.graph.get_comm_cost_for_device(from_node, to_node,
                                                 self.chip.get_processor_by_id(d1),
                                                 self.chip.get_processor_by_id(d2))
+
+        return gp.quicksum(
+            self.comm_sel[from_node, to_node][d1, d2] *
+            get_comm_cost(d1, d2)
             for d1, d2 in self.chip.get_id_combinations()
         )
 

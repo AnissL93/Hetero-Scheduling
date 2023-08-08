@@ -86,7 +86,7 @@ class Chip(object):
         ret = []
         for t1 in type_set:
             for t2 in type_set:
-                if t1 != t2:
+                if [t1, t2] not in ret:
                     ret.append([t1, t2])
 
         return ret

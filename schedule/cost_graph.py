@@ -68,13 +68,10 @@ class CommCost(object):
     def get(self, pA, pB):
         assert isinstance(pA, Processor)
         assert isinstance(pB, Processor)
-        if pA == pB:
-            return 0
-        else:
-            if (pA, pB) not in self.comm_cost.keys():
-                logging.fatal(f"Not found: {(pA.type, pB.type)}")
-                exit(-1)
-            return self.comm_cost[pA, pB]
+        if (pA, pB) not in self.comm_cost.keys():
+            logging.fatal(f"Not found: {(pA.type, pB.type)}")
+            exit(-1)
+        return self.comm_cost[pA, pB]
 
 
 class GraphCost(object):
@@ -316,26 +313,36 @@ class DispatchedGraph(GraphCost):
             self.dispatch_results[str(df.loc[i]["op_id"])] = chip.get_processor_by_id(df.loc[i]["dispatch"])
 
     def draw_results(self, chip: Chip, pdf_file):
+        """
+        Output the graph assignments
+        """
+        tmp_graph = copy.deepcopy(self.nx_graph)
+
         # Update node assignment
         col = get_color_combination(len(chip.ids()))
         for i in self.get_exec_order():
             for index, j in enumerate(chip.ids()):
                 if self.dispatch_results[i] == j:
-                    self.nx_graph.nodes[i]["color"] = col[index]
-                    self.nx_graph.nodes[i]["shape"] = "Mrecord"
-                    self.nx_graph.nodes[i]["style"] = "filled"
-                    self.nx_graph.nodes[i]["fontname"] = "Helvetica"
+                    tmp_graph.nodes[i]["color"] = col[index]
+                    tmp_graph.nodes[i]["shape"] = "Mrecord"
+                    tmp_graph.nodes[i]["style"] = "filled"
+                    tmp_graph.nodes[i]["fontname"] = "FreeSans"
+                    tmp_graph.nodes[i]["label"] = f"{i}\\n{self.op_types[i]}\\n{self.get_dispatched_compute_cost(i)}"
 
-        # add a legend for graph
-
+        ### add a legend for graph
         legend_head = "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"> <TR> <TD COLSPAN=\"1\"><B>Legend</B></TD> </TR>"
         for i, p in enumerate(chip.ids()):
             legend_head += "<TR><TD BGCOLOR=\"{}\">{}</TD></TR>\n".format(col[i], p)
 
         legend_head += "</TABLE>>"
 
-        tmp_graph = copy.deepcopy(self.nx_graph)
-        tmp_graph.add_node("Legend", label=legend_head, shape="box")
+        tmp_graph = nx.DiGraph(tmp_graph)
+        tmp_graph.add_node("Legend", label=legend_head, shape="box", fontname="FreeSans")
+
+        ### add comm cost for edges
+        for e in self.get_edges():
+            tmp_graph.edges[e]["label"] = self.get_dispatched_comm_cost(e[0], e[1])
+            tmp_graph.edges[e]["fontname"] = "FreeSans"
 
         # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
         tmp = nx.nx_agraph.to_agraph(tmp_graph)  # convert to a graphviz graph
@@ -362,8 +369,13 @@ class DispatchedGraph(GraphCost):
         gdf.to_csv(dispatch_csv_file)
 
     def get_dispatched_comm_cost(self, f, t):
-        p_f = self.chip.get_processor_by_id(self.get_dispatch(f))
-        p_t = self.chip.get_processor_by_id(self.get_dispatch(t))
+        pf = self.get_dispatch(f)
+        pt = self.get_dispatch(t)
+        if pf == pt:
+            return 0
+
+        p_f = self.chip.get_processor_by_id(pf)
+        p_t = self.chip.get_processor_by_id(pt)
         return self.get_comm_cost_for_device(f, t, p_f, p_t)
 
     def get_dispatched_compute_cost(self, op):
@@ -372,7 +384,8 @@ class DispatchedGraph(GraphCost):
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
+    # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
+    df = pd.read_csv("data/net_perf/bst/simple_dag.csv")
     graph = GraphCost(df, bst_chip)
     # # print(df)
     df = graph.to_df()
@@ -398,7 +411,6 @@ if __name__ == "__main__":
         # i->suc
         for i in range(len(df["op_id"])):
             ainstance = df.loc[i]
-            print(ainstance)
             write_f = int(ainstance["write"])
             comm_cost = []
             for suc in ast.literal_eval(ainstance["suc"]):
@@ -414,4 +426,4 @@ if __name__ == "__main__":
         df_comm.to_csv("inception_v1_with_comm.csv")
         pass
 
-    preprocess_comm()
+    # preprocess_comm()
