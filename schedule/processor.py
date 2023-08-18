@@ -73,11 +73,21 @@ class Chip(object):
         ret = []
         for d1 in self.processors.keys():
             for d2 in self.processors.keys():
+                ret.append([d1, d2])
+
+        return ret
+
+    def get_id_combinations_no_dup(self):
+        """
+        Get combinations for different ids.
+        """
+        ret = []
+        for d1 in self.processors.keys():
+            for d2 in self.processors.keys():
                 if d1 != d2:
                     ret.append([d1, d2])
 
         return ret
-
     def get_type_combinations(self):
         """
         Get combinations for different types.
@@ -129,7 +139,7 @@ khadas_chip = Chip(
 
 khadas_chip_cpu_only = Chip(
     {
-        "cpu_big": cpu_big,
+        "cpu_b": cpu_big,
         "cpu_s": cpu_small
     }
 )

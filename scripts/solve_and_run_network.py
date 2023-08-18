@@ -79,7 +79,7 @@ def main():
 
         if dump is not None:
             p = pathlib.Path(dump)
-            r.draw_results(supported_chips[chip], p.with_suffix(".pdf"))
+            r.draw_results(p.with_suffix(".pdf"))
             r.dispatch_to_csv(dispatch_csv_file=p.with_suffix(".dispatch.csv"))
 
     else:

@@ -18,6 +18,7 @@ else:
     from .processor import *
     from .processor import Chip, Processor
 
+force_int = True
 
 class OpCost(object):
     """
@@ -31,7 +32,11 @@ class OpCost(object):
         self.backends = {}
 
     def set(self, d, x):
-        self.backends[d] = int(x)
+        if force_int:
+            self.backends[d] = int(x)
+        else:
+            self.backends[d] = x
+
 
     def get(self, d):
         return self.backends[d]
@@ -63,7 +68,10 @@ class CommCost(object):
     def set(self, pA, pB, cost):
         assert isinstance(pA, Processor)
         assert isinstance(pB, Processor)
-        self.comm_cost[pA, pB] = cost
+        if force_int:
+            self.comm_cost[pA, pB] = int(cost)
+        else:
+            self.comm_cost[pA, pB] = cost
 
     def get(self, pA, pB):
         assert isinstance(pA, Processor)
@@ -147,7 +155,7 @@ class GraphCost(object):
                             self.comm_cost[node_id, suc].set(d1, d2, costs[i])
                         else:
                             self.comm_cost[node_id, suc].set(d1, d2, 0)
-                            logging.error("No communication is found, set cummunication to 0")
+                            logging.error(f"No communication of {d1} and {d2} is found, set cummunication to 0")
                     pass
 
 
@@ -287,10 +295,16 @@ class GraphCost(object):
         self.to_df().to_csv(file_name)
 
 class DispatchedGraph(GraphCost):
-    def __init__(self, graph: GraphCost = None, dispatch={}):
+    def __init__(self, graph: GraphCost = None, dispatch : pd.DataFrame = None):
         if graph is not None:
             self.__dict__.update(graph.__dict__)
-            self.dispatch_results = dispatch
+            self.dispatch_results = {}
+            if dispatch is not None:
+                length = len(dispatch)
+                for i in range(length):
+                    node = dispatch.loc[i]
+                    self.dispatch_results[str(node["op_id"])] = str(node["dispatch"])
+
 
     def set_dispatch(self, n, p: str):
         """
@@ -312,16 +326,16 @@ class DispatchedGraph(GraphCost):
         for i in range(len(df)):
             self.dispatch_results[str(df.loc[i]["op_id"])] = chip.get_processor_by_id(df.loc[i]["dispatch"])
 
-    def draw_results(self, chip: Chip, pdf_file):
+    def draw_results(self, pdf_file):
         """
         Output the graph assignments
         """
         tmp_graph = copy.deepcopy(self.nx_graph)
 
         # Update node assignment
-        col = get_color_combination(len(chip.ids()))
+        col = get_color_combination(len(self.chip.ids()))
         for i in self.get_exec_order():
-            for index, j in enumerate(chip.ids()):
+            for index, j in enumerate(self.chip.ids()):
                 if self.dispatch_results[i] == j:
                     tmp_graph.nodes[i]["color"] = col[index]
                     tmp_graph.nodes[i]["shape"] = "Mrecord"
@@ -331,7 +345,7 @@ class DispatchedGraph(GraphCost):
 
         ### add a legend for graph
         legend_head = "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"> <TR> <TD COLSPAN=\"1\"><B>Legend</B></TD> </TR>"
-        for i, p in enumerate(chip.ids()):
+        for i, p in enumerate(self.chip.ids()):
             legend_head += "<TR><TD BGCOLOR=\"{}\">{}</TD></TR>\n".format(col[i], p)
 
         legend_head += "</TABLE>>"

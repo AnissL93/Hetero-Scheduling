@@ -33,5 +33,11 @@ python scripts/solve_and_run_network.py --model data/net_perf/arm/InceptionV3_bl
 
 ```bash
 python scripts/run_network.py --model data/net_perf/arm/InceptionV3.csv --dispatch inceptionv3_dispatch.csv --chip khadas
+
 ```
+
+## Data Format
+
+The network and performance data are stored in .csv format.
+
 

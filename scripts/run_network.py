@@ -19,9 +19,12 @@ logging.basicConfig(
 )
 
 def run_network_scheduling(csv_file, dispatch, chip):
-    graph = read_csv(csv_file, dispatch, chip)
-    exec_time = async_emulation(graph, chip)
-    return graph, exec_time
+    df_graph = pd.read_csv(csv_file)
+    graph = GraphCost(df_graph, chip)
+    dispatch_df = pd.read_csv(dispatch)
+    dispatched = DispatchedGraph(graph, dispatch_df)
+    exec_time = async_emulation(dispatched, chip)
+    return dispatched, exec_time
 
 
 def main():
@@ -40,7 +43,7 @@ def main():
         r, t = run_network_scheduling(model, dispatch, supported_chips[chip])
         if dump is not None:
             p = pathlib.Path(dump)
-            r.draw_results(supported_chips[chip], p.with_suffix(".pdf"))
+            r.draw_results(p.with_suffix(".pdf"))
 
         logging.critical("Total time: {}".format(t.get_total_time()))
 
