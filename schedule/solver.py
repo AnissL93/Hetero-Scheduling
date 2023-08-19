@@ -233,6 +233,17 @@ class ILPSolver(Solver):
                     ]
                 ) == 1)
 
+            for f, t in self.graph.get_edges():
+                for d1, d2 in self.chip.get_id_combinations():
+                    xf1 = self.x[f, d1]
+                    xt2 = self.x[t, d2]
+                    y = self.comm_sel[f, t][d1, d2]
+                    expr = xf1 + xt2 - 2*y
+                    self.problem.addConstr(expr >= 0)
+                    self.problem.addConstr(expr <= 1)
+
+            
+
         def constraint_st_ft():
             """
             1. Constraints that node a starts after its previous nodes
@@ -286,7 +297,7 @@ class ILPSolver(Solver):
         constraint_comm_sel()
         constraint_st_ft()
         constraint_proc_assign()
-        constraint_comm_cost()
+        # constraint_comm_cost()
 
     def solve(self):
         self.objective_func()
