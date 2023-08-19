@@ -144,7 +144,6 @@ class ILPSolver(Solver):
 
         def get_comm_cost(d1, d2):
             if d1 == d2:
-                print("rrrrrrrrrrrr return 0 for ", d1, d2)
                 return 0
             else:
                 return self.graph.get_comm_cost_for_device(from_node, to_node,
@@ -167,14 +166,11 @@ class ILPSolver(Solver):
         self.problem.setObjective(last_node, GRB.MINIMIZE)
 
     def print_problem(self):
-        print("problem objective: ", self.problem.objective)
-        print("problem constraints:")
-        pp(self.problem.constraints)
-
-        print("Start and finish time: ")
+        # print("Start and finish time: ")
         # for node in self.operations:
         #     print(f"{node} st : {self.st[node].value()}")
         #     print(f"{node} ft : {self.ft[node].value()}")
+        pass
 
     def find_parallel_nodes(self):
         """
@@ -276,10 +272,10 @@ class ILPSolver(Solver):
                     yy = y[n, m, h]
                     xn = self.x[n, h]
                     xm = self.x[m, h]
-                    cond = self.ft_compute_only[n] - self.st[m] + self.M * (xn + xm - 2) <= self.M * yy
+                    cond = self.ft_compute_only[n] - self.st[m] + 2* self.M * (xn + xm - 2) <= self.M * yy
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h}")
 
-                    cond = self.ft_compute_only[m] - self.st[n] + self.M * (xn + xm - 2) <= self.M * (
+                    cond = self.ft_compute_only[m] - self.st[n] + 2* self.M * (xn + xm - 2) <= self.M * (
                             1 - yy
                     )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h}")
@@ -303,7 +299,7 @@ class ILPSolver(Solver):
         self.objective_func()
         self.add_constraints()
         self.problem.optimize()
-        # self.print_problem()
+        self.print_problem()
         self.problem.write("schedule.lp")
         self.get_device_dispatch_results()
         # self.rectify()
