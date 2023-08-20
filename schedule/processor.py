@@ -73,8 +73,7 @@ class Chip(object):
         ret = []
         for d1 in self.processors.keys():
             for d2 in self.processors.keys():
-                if d1 != d2:
-                    ret.append([d1, d2])
+                ret.append([d1, d2])
 
         return ret
 

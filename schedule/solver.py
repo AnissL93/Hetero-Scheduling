@@ -1,7 +1,6 @@
 """
 This file will model and solve the problem with ILP
 """
-
 import gurobipy as gp
 import logging
 from gurobipy import GRB
@@ -107,7 +106,7 @@ class ILPSolver(Solver):
                 max_float = max(max_v, max_float)
             return max_float
 
-        self.M = __max_cost(self.graph.op_cost) + 100000000.0
+        self.M = __max_cost(self.graph.op_cost) + 10000.0
         self.limit_resource()
 
     def limit_resource(self):
