@@ -13,6 +13,7 @@ from .cost_graph import *
 
 MAX_FLOAT = 1e20
 
+RESULT_THR = 0.0001
 
 class Solver(object):
     def __init__(self, g: GraphCost, chip: Chip) -> None:
@@ -103,17 +104,19 @@ class ILPSolver(Solver):
             max_float = 0
             for node in cost.keys():
                 max_v = max(list(cost[node].backends.values()))
-                max_float = max(max_v, max_float)
+                max_float = max_v + max_float
+                # max_float = max(max_v, max_float)
             return max_float
 
-        self.M = __max_cost(self.graph.op_cost) + 10000.0
+        self.M = __max_cost(self.graph.op_cost)
+        logging.info(f"Big M is {self.M}")
         self.limit_resource()
 
     def limit_resource(self):
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 1 * 3600
+        self.problem.Params.TimeLimit = 60 * 5
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
 
@@ -271,28 +274,20 @@ class ILPSolver(Solver):
                     yy = y[n, m, h]
                     xn = self.x[n, h]
                     xm = self.x[m, h]
-                    cond = self.ft_compute_only[n] - self.st[m] + 2* self.M * (xn + xm - 2) <= self.M * yy
+                    #cond = self.ft_compute_only[n] - self.st[m] + 2* self.M * (xn + xm - 2) <= self.M * yy
+                    cond = self.ft_compute_only[n] - self.st[m] <= self.M * (2 - xn - xm) + self.M * yy
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h}")
 
-                    cond = self.ft_compute_only[m] - self.st[n] + 2* self.M * (xn + xm - 2) <= self.M * (
-                            1 - yy
-                    )
+                    cond = self.ft_compute_only[m] - self.st[n] <= self.M * (2 - xn - xm) + self.M * (1-yy)
+                    # cond = self.ft_compute_only[m] - self.st[n] + 2* self.M * (xn + xm - 2) <= self.M * (
+                            # 1 - yy
+                    # )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h}")
-
-        def constraint_comm_cost():
-            for f, t in self.graph.get_edges():
-                for d1, d2 in self.chip.get_id_combinations():
-                    sel = self.comm_sel[f, t][d1, d2]
-                    x_f = self.x[f, d1]
-                    x_t = self.x[t, d2]
-                    self.M * (1 - sel) + x_f + x_t >= 2
-                    self.M * sel - (x_f + x_t) >= -1
 
         constraint_x()
         constraint_comm_sel()
         constraint_st_ft()
         constraint_proc_assign()
-        # constraint_comm_cost()
 
     def solve(self):
         self.objective_func()
@@ -315,7 +310,7 @@ class ILPSolver(Solver):
         for i in order:
             has_dispatched = False
             for j in self.chip.ids():
-                if self.x[i, j].X == 1:
+                if abs(1. - self.x[i, j].X) < RESULT_THR:
                     has_dispatched = True
                     self.graph.set_dispatch(i, j)
 
