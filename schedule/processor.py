@@ -105,8 +105,8 @@ class Chip(object):
         return ret
 
 
-maca = Processor("MACA")
-cv_dsp = Processor("CV_DSP")
+maca = Processor("mac")
+cv_dsp = Processor("cv_dsp")
 
 bst_chip = Chip({
     "maca": maca,
@@ -114,9 +114,9 @@ bst_chip = Chip({
     "cv_dsp1": cv_dsp
 })
 
-cpu_big = Processor("CPU_B")
-cpu_small = Processor("CPU_S")
-gpu = Processor("GPU")
+cpu_big = Processor("cpu_b")
+cpu_small = Processor("cpu_s")
+gpu = Processor("gpu")
 
 khadas_chip = Chip(
     {
@@ -128,7 +128,7 @@ khadas_chip = Chip(
 
 khadas_chip_cpu_only = Chip(
     {
-        "cpu_big": cpu_big,
+        "cpu_b": cpu_big,
         "cpu_s": cpu_small
     }
 )
@@ -141,4 +141,4 @@ supported_chips = {
 
 
 def test_chip():
-    assert bst_chip.types_set() == ["MACA", "CV_DSP"]
+    assert bst_chip.types_set() == ["maca", "cv_dsp"]

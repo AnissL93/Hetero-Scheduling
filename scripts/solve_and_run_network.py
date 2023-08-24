@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import os
 import sys
 
@@ -16,11 +15,12 @@ import pathlib
 import datetime
 
 logging.basicConfig(
-            level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-            format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
-            datefmt='%Y-%m-%d %H:%M:%S'  # (Optional) Set the date format
-        )
+    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Set the log message format
+    datefmt="%Y-%m-%d %H:%M:%S",  # (Optional) Set the date format
+)
 # Get the current timestamp with microsecond precision
+
 
 def get_log_file_name(model_file):
     file_name = pathlib.Path(model_file).stem
@@ -31,6 +31,7 @@ def get_log_file_name(model_file):
     log_file = home + "/log/" + file_name + "-" + str_date_time + ".log"
     return log_file
 
+
 def run_network_scheduling(model, chip):
     df_graph = pd.read_csv(model)
     graph = GraphCost(df_graph, chip)
@@ -38,11 +39,21 @@ def run_network_scheduling(model, chip):
     exec_time = async_emulation(results, chip)
     return results, exec_time
 
+
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, type=str,
-                        help="Model file in csv format, including graph structure, compute cost and communication cost.")
-    parser.add_argument("--chip", type=str, required=True, help="Chip type, supporting bst, khadas and khadas_cpu_only")
+    parser.add_argument(
+        "--model",
+        required=True,
+        type=str,
+        help="Model file in csv format, including graph structure, compute cost and communication cost.",
+    )
+    parser.add_argument(
+        "--chip",
+        type=str,
+        required=True,
+        help="Chip type, supporting bst, khadas and khadas_cpu_only",
+    )
     parser.add_argument("--dump", type=str, help="The prefix of dumping path")
     parser.add_argument("--log", help="Log file", action="store_true")
     return parser.parse_args()
@@ -54,6 +65,7 @@ def print_parameter(args):
     logging.info(f"chip: {args.chip}")
     pass
 
+
 def main():
     args = get_args()
     print_parameter(args)
@@ -63,12 +75,11 @@ def main():
     dump = args.dump
     log = args.log
 
-
     if log is not None:
         log_path = get_log_file_name(model)
         print(f"Enable logging, store log to {log_path}")
 
-        file_handler = logging.FileHandler(log_path) 
+        file_handler = logging.FileHandler(log_path)
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         file_handler.setFormatter(logging.Formatter(log_format))
         logging.getLogger("").addHandler(file_handler)
@@ -85,5 +96,5 @@ def main():
     else:
         logging.error(f"Unsupported backends, try: {list(supported_chips.keys())}")
 
-main()
 
+main()

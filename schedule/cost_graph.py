@@ -287,10 +287,17 @@ class GraphCost(object):
         self.to_df().to_csv(file_name)
 
 class DispatchedGraph(GraphCost):
-    def __init__(self, graph: GraphCost = None, dispatch={}):
+    def __init__(self, graph: GraphCost = None, dispatch : pd.DataFrame=None):
         if graph is not None:
             self.__dict__.update(graph.__dict__)
-            self.dispatch_results = dispatch
+
+        self.dispatch_results = {}
+        if dispatch is not None:
+            length = len(dispatch)
+            for i in range(length):
+                op = str(dispatch.loc[i]["op_id"])
+                device = str(dispatch.loc[i]["dispatch"])
+                self.dispatch_results[op] = device
 
     def set_dispatch(self, n, p: str):
         """
@@ -371,9 +378,6 @@ class DispatchedGraph(GraphCost):
     def get_dispatched_comm_cost(self, f, t):
         pf = self.get_dispatch(f)
         pt = self.get_dispatch(t)
-        if pf == pt:
-            return 0
-
         p_f = self.chip.get_processor_by_id(pf)
         p_t = self.chip.get_processor_by_id(pt)
         return self.get_comm_cost_for_device(f, t, p_f, p_t)
@@ -385,8 +389,8 @@ class DispatchedGraph(GraphCost):
 
 if __name__ == "__main__":
     # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
-    df = pd.read_csv("data/net_perf/bst/simple_dag.csv")
-    graph = GraphCost(df, bst_chip)
+    df = pd.read_csv("data/net_perf/arm/InceptionV1.csv")
+    graph = GraphCost(df, khadas_chip)
     # # print(df)
     df = graph.to_df()
     print(df)

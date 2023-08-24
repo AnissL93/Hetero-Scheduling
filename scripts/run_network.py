@@ -18,8 +18,10 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'         # (Optional) Set the date format
 )
 
-def run_network_scheduling(csv_file, dispatch, chip):
-    graph = read_csv(csv_file, dispatch, chip)
+def run_network_scheduling(model, dispatch, chip):
+    df_graph = pd.read_csv(model)
+    df_dispatch = pd.read_csv(dispatch)
+    graph = DispatchedGraph(GraphCost(df_graph,  chip), df_dispatch) 
     exec_time = async_emulation(graph, chip)
     return graph, exec_time
 

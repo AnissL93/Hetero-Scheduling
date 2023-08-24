@@ -116,7 +116,7 @@ class ILPSolver(Solver):
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 60 * 5
+        self.problem.Params.TimeLimit = 60 * 10
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
 
