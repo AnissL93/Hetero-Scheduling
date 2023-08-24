@@ -139,7 +139,7 @@ class GraphCost(object):
                     self.comm_cost[node_id, suc] = CommCost()
 
                 for d1, d2 in chip.get_type_combinations():
-                    dkey = str([d1.type, d2.type])
+                    dkey = str((d1.type, d2.type))
                     for i, suc in enumerate(suc_nodes):
                         if dkey in node.keys():
                             costs = ast.literal_eval(node[dkey])
