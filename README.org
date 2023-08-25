@@ -6,11 +6,12 @@
 
 * Installation
 
-```bash
+#+begin_src bash
 pip install -r requirements.txt
-```
+#+end_src
 
 Set Variables
+
 #+begin_src bash
 export HETERO_SCHEDULE_HOME=/path/to/repo
 #+end_src
