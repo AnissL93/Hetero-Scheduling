@@ -1,3 +1,6 @@
 [submodule "third_party/Partitioning-Algorith"]
 	path = third_party/Partitioning-Algorith
 	url = git@github.com:zyujie-ioo/Partitioning-Algorithm.git
+[submodule "third_party/Partitioning-Algorithm"]
+	path = third_party/Partitioning-Algorithm
+	url = git@github.com:zyujie-ioo/Partitioning-Algorithm.git
