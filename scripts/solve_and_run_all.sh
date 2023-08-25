@@ -9,7 +9,7 @@ for file in $(ls ${model_path}); do
         # strip .csv
         file_name="${file%.csv}"
         log_path=$HETERO_SCHEDULE_HOME/log/
-        cmd="python $HETERO_SCHEDULE_HOME/scripts/solve_and_run_network.py --model=${model_path}/${file} --chip khadas --dump=$HETERO_SCHEDULE_HOME/results/khadas/$file_name-${time_stamp}"
+        cmd="python $HETERO_SCHEDULE_HOME/scripts/solve_and_run_network.py --model=${model_path}/${file} --chip khadas --dump=$HETERO_SCHEDULE_HOME/results/khadas/$2$file_name-${time_stamp}"
         echo $cmd >> "${log_path}/run-bst-${time_stamp}.log"
         eval $cmd
     fi
