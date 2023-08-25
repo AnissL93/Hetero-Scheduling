@@ -104,13 +104,17 @@ class Chip(object):
         ret += ">"
         return ret
 
+    def get_main_core(self):
+        """The first core is the main core."""
+        return self.ids()[0]
+
 
 maca = Processor("mac")
 cv_dsp = Processor("cv_dsp")
 
 bst_chip = Chip({
-    "maca": maca,
     "cv_dsp0": cv_dsp,
+    "maca": maca,
     "cv_dsp1": cv_dsp
 })
 

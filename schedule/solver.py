@@ -12,8 +12,8 @@ import sys
 from .cost_graph import *
 
 MAX_FLOAT = 1e20
-
 RESULT_THR = 0.0001
+FORCE_MAIN_CORE = False
 
 class Solver(object):
     def __init__(self, g: GraphCost, chip: Chip) -> None:
@@ -77,8 +77,6 @@ class ILPSolver(Solver):
                     vtype=GRB.BINARY, name=f"x_{op}_{h_id}"
                 )
 
-        self.comm_sel = {}
-
         # get all edges
         self.comm_sel = {}
         for f, t in self.graph.get_edges():
@@ -116,7 +114,7 @@ class ILPSolver(Solver):
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 60 * 10
+        self.problem.Params.TimeLimit = 60 * 100
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
 
@@ -201,7 +199,6 @@ class ILPSolver(Solver):
         """
         for (n, m) n, and m are parallel
         """
-
         def constraint_x():
             """
             Constr1: only one processor is assigned to True
@@ -241,6 +238,15 @@ class ILPSolver(Solver):
                     self.problem.addConstr(expr <= 1)
 
             
+        def constraint_force_main_core():
+            """
+            Force node with multiple outputs or inputs to big core
+            """
+            main_core = self.chip.get_main_core()
+            for node in self.graph.topo_sort():
+                if len(self.graph.sucs(node)) > 1 or len(self.graph.prevs(node)) > 1:
+                    self.problem.addConstr(self.x[node, main_core] == 1)
+
 
         def constraint_st_ft():
             """
@@ -288,6 +294,8 @@ class ILPSolver(Solver):
         constraint_comm_sel()
         constraint_st_ft()
         constraint_proc_assign()
+        if FORCE_MAIN_CORE:
+            constraint_force_main_core()
 
     def solve(self):
         self.objective_func()
