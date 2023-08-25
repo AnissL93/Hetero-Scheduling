@@ -21,137 +21,198 @@ export HETERO_SCHEDULE_HOME=/path/to/repo
 
 #+begin_src bash :results output :dir /sshx:a100-server:/home/huiying/projects/Hetero-Scheduling/
 export HETERO_SCHEDULE_HOME=$(pwd)
-/home/huiying/system/anaconda3/bin/python scripts/solve_and_run_network.py --model data/net_perf/arm/InceptionV3_block.csv --chip khadas
+
+/home/huiying/system/anaconda3/bin/python scripts/solve_and_run_network.py --model data/net_perf/arm/InceptionV3_block.csv --chip khadas --dump results/InceptionV3_block > log 2>&1
+
+# Estimate the network with a given dispatching strategy
+/home/huiying/system/anaconda3/bin/python/ scripts/run_network.py --model data/net_perf/arm/InceptionV3_block.csv --dispatch results/InceptionV3_block.dispatch.csv --chip khadas
+
+cat "results/InceptionV3_block.dispatch.csv"
+cat "log/InceptionV3_block-25-08-2023-12:09:56.log"
 #+end_src
 
 #+RESULTS:
 #+begin_example
-Enable logging, store log to /home/huiying/projects/Hetero-Scheduling/log/InceptionV3_block-24-08-2023-17:28:08.log
-Restricted license - for non-production use only - expires 2024-10-28
-Set parameter Threads to value 32
-Set parameter NodefileStart to value 32768
-Set parameter TimeLimit to value 600
-7 vs 8
-7 vs 9
-7 vs 11
-7 vs 14
-7 vs 10
-7 vs 12
-7 vs 15
-7 vs 13
-7 vs 16
-8 vs 9
-add 8 -> 9
-8 vs 11
-add 8 -> 11
-8 vs 14
-add 8 -> 14
-8 vs 10
-add 8 -> 10
-8 vs 12
-add 8 -> 12
-8 vs 15
-add 8 -> 15
-8 vs 13
-add 8 -> 13
-8 vs 16
-9 vs 11
-add 9 -> 11
-9 vs 14
-add 9 -> 14
-9 vs 10
-9 vs 12
-add 9 -> 12
-9 vs 15
-add 9 -> 15
-9 vs 13
-add 9 -> 13
-9 vs 16
-11 vs 14
-add 11 -> 14
-11 vs 10
-add 11 -> 10
-11 vs 12
-11 vs 15
-add 11 -> 15
-11 vs 13
-11 vs 16
-14 vs 10
-add 14 -> 10
-14 vs 12
-add 14 -> 12
-14 vs 15
-14 vs 13
-add 14 -> 13
-14 vs 16
-10 vs 12
-add 10 -> 12
-10 vs 15
-add 10 -> 15
-10 vs 13
-add 10 -> 13
-10 vs 16
-12 vs 15
-add 12 -> 15
-12 vs 13
-12 vs 16
-15 vs 13
-add 15 -> 13
-15 vs 16
-13 vs 16
-Gurobi Optimizer version 10.0.2 build v10.0.2rc0 (linux64)
-
-CPU model: Intel(R) Xeon(R) Gold 6326 CPU @ 2.90GHz, instruction set [SSE2|AVX|AVX2|AVX512]
-Thread count: 32 physical cores, 64 logical processors, using up to 32 threads
-
-Optimize a model with 389 rows, 218 columns and 1817 nonzeros
-Model fingerprint: 0x0b7033c1
-Variable types: 11 continuous, 207 integer (207 binary)
-Coefficient statistics:
-  Matrix range     [1e+00, 5e+04]
-  Objective range  [1e+00, 1e+00]
-  Bounds range     [1e+00, 1e+00]
-  RHS range        [1e+00, 1e+05]
-Presolve removed 1 rows and 2 columns
-Presolve time: 0.01s
-Presolved: 388 rows, 216 columns, 1727 nonzeros
-Variable types: 9 continuous, 207 integer (207 binary)
-Found heuristic solution: objective 16202.000000
-Found heuristic solution: objective 13327.000000
-
-Root relaxation: objective 6.903000e+03, 41 iterations, 0.00 seconds (0.00 work units)
-
-    Nodes    |    Current Node    |     Objective Bounds      |     Work
- Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
-
-     0     0 6903.00000    0    2 13327.0000 6903.00000  48.2%     -    0s
-H    0     0                    10889.000000 6903.00000  36.6%     -    0s
-     0     0 7064.17490    0   10 10889.0000 7064.17490  35.1%     -    0s
-H    0     0                    10711.000000 7152.09480  33.2%     -    0s
-     0     0 7152.09480    0   15 10711.0000 7152.09480  33.2%     -    0s
-H    0     0                    8880.0000000 7152.09480  19.5%     -    0s
-H    0     0                    8241.0000000 7431.21933  9.83%     -    0s
-     0     0 7431.21933    0   11 8241.00000 7431.21933  9.83%     -    0s
-     0     0 7548.99062    0   18 8241.00000 7548.99062  8.40%     -    0s
-     0     0 7548.99062    0   19 8241.00000 7548.99062  8.40%     -    0s
-     0     0 7548.99062    0   18 8241.00000 7548.99062  8.40%     -    0s
-     0     0 8035.00000    0    7 8241.00000 8035.00000  2.50%     -    0s
-
-Cutting planes:
-  MIR: 8
-
-Explored 1 nodes (179 simplex iterations) in 0.06 seconds (0.01 work units)
-Thread count was 32 (of 64 available processors)
-
-Solution count 6: 8241 8880 10711 ... 16202
-
-Optimal solution found (tolerance 1.00e-04)
-Best objective 8.241000000000e+03, best bound 8.241000000000e+03, gap 0.0000%
+,op_id,dispatch
+0,7,cpu_b
+1,9,cpu_s
+2,11,cpu_b
+3,14,gpu
+4,12,cpu_b
+5,15,gpu
+6,8,cpu_s
+7,10,cpu_b
+8,13,gpu
+9,16,cpu_b
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,531 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,532 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,533 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,534 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,535 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,536 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,536 - root - ERROR - No communication is found, set cummunication to 0
+2023-08-25 12:09:56,562 - gurobipy.gurobipy - INFO - Restricted license - for non-production use only - expires 2024-10-28
+2023-08-25 12:09:56,564 - root - INFO - Big M is 36720
+2023-08-25 12:09:56,564 - gurobipy.gurobipy - INFO - Set parameter Threads to value 32
+2023-08-25 12:09:56,564 - gurobipy.gurobipy - INFO - Set parameter NodefileStart to value 32768
+2023-08-25 12:09:56,565 - gurobipy.gurobipy - INFO - Set parameter TimeLimit to value 6000
+2023-08-25 12:09:56,565 - root - INFO - 32
+2023-08-25 12:09:56,565 - root - INFO - 1
+2023-08-25 12:09:56,565 - root - INFO - inf
+2023-08-25 12:09:56,565 - root - INFO - 2000000000
+2023-08-25 12:09:56,565 - root - INFO - 32768.0
+2023-08-25 12:09:56,579 - gurobipy.gurobipy - INFO - Gurobi Optimizer version 10.0.2 build v10.0.2rc0 (linux64)
+2023-08-25 12:09:56,579 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,599 - gurobipy.gurobipy - INFO - CPU model: Intel(R) Xeon(R) Gold 6326 CPU @ 2.90GHz, instruction set [SSE2|AVX|AVX2|AVX512]
+2023-08-25 12:09:56,599 - gurobipy.gurobipy - INFO - Thread count: 32 physical cores, 64 logical processors, using up to 32 threads
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO - Optimize a model with 389 rows, 218 columns and 1817 nonzeros
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO - Model fingerprint: 0x0b7033c1
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO - Variable types: 11 continuous, 207 integer (207 binary)
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO - Coefficient statistics:
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO -   Matrix range     [1e+00, 5e+04]
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO -   Objective range  [1e+00, 1e+00]
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO -   Bounds range     [1e+00, 1e+00]
+2023-08-25 12:09:56,600 - gurobipy.gurobipy - INFO -   RHS range        [1e+00, 1e+05]
+2023-08-25 12:09:56,609 - gurobipy.gurobipy - INFO - Presolve removed 1 rows and 2 columns
+2023-08-25 12:09:56,610 - gurobipy.gurobipy - INFO - Presolve time: 0.01s
+2023-08-25 12:09:56,610 - gurobipy.gurobipy - INFO - Presolved: 388 rows, 216 columns, 1727 nonzeros
+2023-08-25 12:09:56,614 - gurobipy.gurobipy - INFO - Variable types: 9 continuous, 207 integer (207 binary)
+2023-08-25 12:09:56,616 - gurobipy.gurobipy - INFO - Found heuristic solution: objective 16202.000000
+2023-08-25 12:09:56,618 - gurobipy.gurobipy - INFO - Found heuristic solution: objective 13327.000000
+2023-08-25 12:09:56,619 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,620 - gurobipy.gurobipy - INFO - Root relaxation: objective 6.903000e+03, 41 iterations, 0.00 seconds (0.00 work units)
+2023-08-25 12:09:56,626 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,626 - gurobipy.gurobipy - INFO -     Nodes    |    Current Node    |     Objective Bounds      |     Work
+2023-08-25 12:09:56,626 - gurobipy.gurobipy - INFO -  Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+2023-08-25 12:09:56,626 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,626 - gurobipy.gurobipy - INFO -      0     0 6903.00000    0    2 13327.0000 6903.00000  48.2%     -    0s
+2023-08-25 12:09:56,628 - gurobipy.gurobipy - INFO - H    0     0                    10889.000000 6903.00000  36.6%     -    0s
+2023-08-25 12:09:56,634 - gurobipy.gurobipy - INFO -      0     0 7064.17490    0   10 10889.0000 7064.17490  35.1%     -    0s
+2023-08-25 12:09:56,638 - gurobipy.gurobipy - INFO - H    0     0                    10711.000000 7152.09480  33.2%     -    0s
+2023-08-25 12:09:56,639 - gurobipy.gurobipy - INFO -      0     0 7152.09480    0   15 10711.0000 7152.09480  33.2%     -    0s
+2023-08-25 12:09:56,644 - gurobipy.gurobipy - INFO - H    0     0                    8880.0000000 7152.09480  19.5%     -    0s
+2023-08-25 12:09:56,645 - gurobipy.gurobipy - INFO - H    0     0                    8241.0000000 7431.21933  9.83%     -    0s
+2023-08-25 12:09:56,646 - gurobipy.gurobipy - INFO -      0     0 7431.21933    0   11 8241.00000 7431.21933  9.83%     -    0s
+2023-08-25 12:09:56,647 - gurobipy.gurobipy - INFO -      0     0 7548.99062    0   18 8241.00000 7548.99062  8.40%     -    0s
+2023-08-25 12:09:56,647 - gurobipy.gurobipy - INFO -      0     0 7548.99062    0   19 8241.00000 7548.99062  8.40%     -    0s
+2023-08-25 12:09:56,647 - gurobipy.gurobipy - INFO -      0     0 7548.99062    0   18 8241.00000 7548.99062  8.40%     -    0s
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO -      0     0 8035.00000    0    7 8241.00000 8035.00000  2.50%     -    0s
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO - Cutting planes:
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO -   MIR: 8
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,649 - gurobipy.gurobipy - INFO - Explored 1 nodes (179 simplex iterations) in 0.05 seconds (0.01 work units)
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO - Thread count was 32 (of 64 available processors)
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO - Solution count 6: 8241 8880 10711 ... 16202
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO -
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO - Optimal solution found (tolerance 1.00e-04)
+2023-08-25 12:09:56,650 - gurobipy.gurobipy - INFO - Best objective 8.241000000000e+03, best bound 8.241000000000e+03, gap 0.0000%
+2023-08-25 12:09:56,652 - root - CRITICAL - Total time: 8241
 #+end_example
 
 
-* Estimate the network with a given dispatching strategy
+The results is dipicted in: results/InceptionV3_block.pdf
 
-#+begin_src bash
-python scripts/run_network.py --model data/net_perf/arm/InceptionV3.csv --dispatch inceptionv3_dispatch.csv --chip khadas
-#+end_src
