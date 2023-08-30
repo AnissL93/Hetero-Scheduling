@@ -2,7 +2,6 @@
 """
 The basic network structure.
 """
-import networkx as nx
 import logging
 import pandas as pd
 import ast
@@ -389,11 +388,12 @@ class DispatchedGraph(GraphCost):
 
 if __name__ == "__main__":
     # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
-    df = pd.read_csv("data/net_perf/arm/InceptionV1.csv")
+    df = pd.read_csv("data/net_perf/khadas/InceptionResnetV2.csv")
     graph = GraphCost(df, khadas_chip)
     # # print(df)
     df = graph.to_df()
     print(df)
+    graph.to_graphviz("a.pdf")
 
 
     # read communication

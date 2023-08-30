@@ -13,24 +13,35 @@ import pathlib
 import logging
 
 logging.basicConfig(
-    level=logging.INFO,                # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Set the log message format
-    datefmt='%Y-%m-%d %H:%M:%S'         # (Optional) Set the date format
+    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Set the log message format
+    datefmt="%Y-%m-%d %H:%M:%S",  # (Optional) Set the date format
 )
+
 
 def run_network_scheduling(model, dispatch, chip):
     df_graph = pd.read_csv(model)
     df_dispatch = pd.read_csv(dispatch)
-    graph = DispatchedGraph(GraphCost(df_graph,  chip), df_dispatch) 
+    graph = DispatchedGraph(GraphCost(df_graph, chip), df_dispatch)
     exec_time = async_emulation(graph, chip)
     return graph, exec_time
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True, help="The model file with dispatched processor information")
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        help="The model file with dispatched processor information",
+    )
     parser.add_argument("--dispatch", type=str, required=True, help="The dispatch file")
-    parser.add_argument("--chip", type = str, required=True, help="Chip type, supporting bst, khadas and khadas_cpu_only")
+    parser.add_argument(
+        "--chip",
+        type=str,
+        required=True,
+        help="Chip type, supporting bst, khadas and khadas_cpu_only",
+    )
     parser.add_argument("--dump", type=str, help="The prefix of dumping path")
     args = parser.parse_args()
     model = args.model
@@ -48,5 +59,6 @@ def main():
 
     else:
         print(f"Error: Unsupported backends, try: {supported_chips.keys()}")
+
 
 main()

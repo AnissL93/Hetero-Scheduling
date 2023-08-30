@@ -137,12 +137,19 @@ khadas_chip_cpu_only = Chip(
     }
 )
 
+khadas_chip_big_core_gpu = Chip(
+    {
+        "cpu_b": cpu_big,
+        "gpu": gpu
+    }
+)
+
 supported_chips = {
     "khadas": khadas_chip,
     "bst": bst_chip,
-    "khadas_cpu_only": khadas_chip_cpu_only
+    "khadas_cpu_only": khadas_chip_cpu_only,
+    "khadas_cpu_b_gpu" : khadas_chip_big_core_gpu
 }
-
 
 def test_chip():
     assert bst_chip.types_set() == ["maca", "cv_dsp"]

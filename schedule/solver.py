@@ -16,9 +16,10 @@ RESULT_THR = 0.0001
 FORCE_MAIN_CORE = False
 
 class Solver(object):
-    def __init__(self, g: GraphCost, chip: Chip) -> None:
+    def __init__(self, g: GraphCost, chip: Chip, name = None) -> None:
         self.graph = DispatchedGraph(g)
         self.chip = chip
+        self.model_name = name
 
     def rectify(self):
         for op in self.operations:
@@ -58,8 +59,8 @@ class MinimalSolver(Solver):
 
 
 class ILPSolver(Solver):
-    def __init__(self, g, chip: Chip) -> None:
-        super().__init__(g, chip)
+    def __init__(self, g, chip: Chip, model_name = None) -> None:
+        super().__init__(g, chip, model_name)
         self.prepare()
 
     def prepare(self):
@@ -114,7 +115,7 @@ class ILPSolver(Solver):
         self.problem.Params.Threads = 32
         self.problem.Params.NodefileStart = 1024 * 32
         # set time limit to 20 hours
-        self.problem.Params.TimeLimit = 60 * 100
+        self.problem.Params.TimeLimit = 60 * 60 * 6
         # self.problem.Params.NodeLimit = 1000000
         # self.problem.Params.SolutionLimit = 10
 
@@ -260,6 +261,40 @@ class ILPSolver(Solver):
                     cond = self.st[node] >= self.ft_with_comm[prev, node]
                     self.problem.addConstr(cond, f"dep_{node}-{prev}")
 
+        def constraint_proc_assign_with_comm():
+            """
+            Constraints every node
+            if x[n][h] == x[m][h] == 1:
+                ft[n] <= st[m] or ft[m] <= st[n]  // n and m can not be overlapped
+            """
+
+            parallel_nodes = self.find_parallel_nodes()
+            y = {}
+            for n, m in parallel_nodes:
+                for h in self.chip.ids():
+                    y[n, m, h] = self.problem.addVar(
+                        vtype=GRB.BINARY, name=f"y_{n}_{m}_{h}"
+                    )
+
+            for n, m in parallel_nodes:
+                st_m = self.st[m]
+                st_n = self.st[n]
+                for h in self.chip.ids():
+                    xn = self.x[n, h]
+                    xm = self.x[m, h]
+                    for suc_n in self.graph.sucs(n):
+                        for suc_m in self.graph.sucs(m):
+                            ed_m = self.ft_with_comm[m, suc_m]
+                            ed_n = self.ft_with_comm[n, suc_n]
+                            y_var = self.problem.addVar(
+                                vtype=GRB.BINARY
+                            )
+                            cond1 = ed_n - st_m <= self.M * (2 - xn - xm) + self.M * y_var
+                            cond2 = ed_m - st_n <= self.M * (2 - xn - xm) + self.M * (1-y_var)
+                            self.problem.addConstr(cond1)
+                            self.problem.addConstr(cond2)
+                
+
         def constraint_proc_assign():
             """
             Constraints every node
@@ -293,7 +328,7 @@ class ILPSolver(Solver):
         constraint_x()
         constraint_comm_sel()
         constraint_st_ft()
-        constraint_proc_assign()
+        constraint_proc_assign_with_comm()
         if FORCE_MAIN_CORE:
             constraint_force_main_core()
 
@@ -301,10 +336,14 @@ class ILPSolver(Solver):
         self.objective_func()
         self.add_constraints()
         self.problem.optimize()
+
+        if self.model_name is not None:
+            self.problem.write("results/ilp/" + self.model_name + ".lp")
+            self.problem.write("results/ilp/" + self.model_name + ".mst")
+            self.problem.write("results/ilp/" + self.model_name + ".sol")
+
         self.print_problem()
-        self.problem.write("schedule.lp")
         self.get_device_dispatch_results()
-        # self.rectify()
 
     # def print_results(self):
     #     for i in self.operations:
@@ -332,7 +371,7 @@ class ILPSolver(Solver):
                 exit(-1)
 
 
-def solveDag(solverType, g: GraphCost, chip: Chip, f=None):
+def solveDag(solverType, g: GraphCost, chip: Chip, model_name):
     """
     solverType: solve class, e.g., ILPSolver/BasicSolver/...
     cost: the cost of each operation, e.g.,
@@ -347,9 +386,9 @@ def solveDag(solverType, g: GraphCost, chip: Chip, f=None):
 
     f->str : the output file name
     """
-    solver = solverType(g, chip)
+    solver = solverType(g, chip, model_name)
     solver.solve()
-    if f is not None:
-        solver.draw_results(f)
+    # if f is not None:
+    #     solver.draw_results(f)
 
     return solver.graph

@@ -22,23 +22,25 @@ logging.basicConfig(
 # Get the current timestamp with microsecond precision
 
 
-def get_log_file_name(model_file):
+def get_model_name(model_file, chip):
     file_name = pathlib.Path(model_file).stem
     current_timestamp = datetime.datetime.now().timestamp()
     date_time = datetime.datetime.fromtimestamp(current_timestamp)
     str_date_time = date_time.strftime("%d-%m-%Y-%H:%M:%S")
+    return f"{chip}-{file_name}-{str_date_time}"
+
+def get_log_file_name(model_file, chip):
     home = os.environ.get("HETERO_SCHEDULE_HOME")
-    log_file = home + "/log/" + file_name + "-" + str_date_time + ".log"
+    log_file = home + "/log/" + get_model_name(model_file, chip) + ".log"
     return log_file
 
-
 def run_network_scheduling(model, chip):
+    c = supported_chips[chip]
     df_graph = pd.read_csv(model)
-    graph = GraphCost(df_graph, chip)
-    results = solveDag(ILPSolver, graph, chip)
-    exec_time = async_emulation(results, chip)
+    graph = GraphCost(df_graph, c)
+    results = solveDag(ILPSolver, graph, c, get_model_name(model, chip))
+    exec_time = async_emulation(results, c)
     return results, exec_time
-
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -63,6 +65,7 @@ def print_parameter(args):
     logging.info("============ Parameters ============")
     logging.info(f"model: {args.model}")
     logging.info(f"chip: {args.chip}")
+    logging.info(f"dump: {args.dump}")
     pass
 
 
@@ -76,7 +79,7 @@ def main():
     log = args.log
 
     if log is not None:
-        log_path = get_log_file_name(model)
+        log_path = get_log_file_name(model, chip)
         print(f"Enable logging, store log to {log_path}")
 
         file_handler = logging.FileHandler(log_path)
@@ -85,7 +88,7 @@ def main():
         logging.getLogger("").addHandler(file_handler)
 
     if chip in supported_chips.keys():
-        r, t = run_network_scheduling(model, supported_chips[chip])
+        r, t = run_network_scheduling(model, chip)
         logging.critical("Total time: {}".format(t.get_total_time()))
 
         if dump is not None:
