@@ -109,12 +109,17 @@ class Chip(object):
         return self.ids()[0]
 
 
-maca = Processor("mac")
+maca = Processor("maca")
 cv_dsp = Processor("cv_dsp")
 
 bst_chip = Chip({
     "cv_dsp0": cv_dsp,
     "maca": maca,
+    "cv_dsp1": cv_dsp
+})
+
+bst_chip_dsp_only = Chip({
+    "cv_dsp0": cv_dsp,
     "cv_dsp1": cv_dsp
 })
 
@@ -147,6 +152,7 @@ khadas_chip_big_core_gpu = Chip(
 supported_chips = {
     "khadas": khadas_chip,
     "bst": bst_chip,
+    "bst_dsp_only": bst_chip_dsp_only,
     "khadas_cpu_only": khadas_chip_cpu_only,
     "khadas_cpu_b_gpu" : khadas_chip_big_core_gpu
 }

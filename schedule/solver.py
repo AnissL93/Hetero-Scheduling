@@ -328,7 +328,8 @@ class ILPSolver(Solver):
         constraint_x()
         constraint_comm_sel()
         constraint_st_ft()
-        constraint_proc_assign_with_comm()
+        constraint_proc_assign()
+        # constraint_proc_assign_with_comm()
         if FORCE_MAIN_CORE:
             constraint_force_main_core()
 

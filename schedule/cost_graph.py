@@ -141,6 +141,7 @@ class GraphCost(object):
                     dkey = str((d1.type, d2.type))
                     for i, suc in enumerate(suc_nodes):
                         if dkey in node.keys():
+                            print(node[dkey])
                             costs = ast.literal_eval(node[dkey])
                             assert len(costs) == len(suc_nodes)
                             self.comm_cost[node_id, suc].set(d1, d2, costs[i])
