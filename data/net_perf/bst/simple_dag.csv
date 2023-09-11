@@ -1,4 +1,4 @@
-  ,op_id,op_type,suc,MACA,CV_DSP,"['MACA', 'CV_DSP']","['CV_DSP', 'MACA']","['CV_DSP', 'CV_DSP']","['MACA', 'MACA']"
+  ,op_id,op_type,suc,maca,cv_dsp,"['maca', 'cv_dsp']","['cv_dsp', 'maca']","['cv_dsp', 'cv_dsp']","['maca', 'maca']"
 0 ,node0,Conv1,"['node1','node3']" ,  20 ,    18 ,"[12,1]"            ,"[12,12]"            ,"[20,20]"              ,"[20,20]"
 1 ,node1,Conv2,['node2']           ,   18 ,    18 ,[12]                 ,[12]                 ,[12]                   ,[2]
 2 ,node2,Conv3,['node5']           ,   18 ,    18 ,[12]                 ,[12]                 ,[12]                   ,[2]

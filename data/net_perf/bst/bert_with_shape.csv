@@ -1,4 +1,4 @@
-,op_id,op_type,suc,MACA,CV_DSP
+,op_id,op_type,suc,maca,cv_dsp
 0,/model/bert/Constant,Constant,['/model/bert/pooler/Gather'],300,300
 1,/model/bert/Constant_1,Constant,['/model/bert/Expand'],300,300
 2,/model/bert/Constant_2,Constant,"['/model/bert/Equal', '/model/bert/Where']",300,300

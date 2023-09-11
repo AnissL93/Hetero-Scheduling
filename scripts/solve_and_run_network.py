@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
+import scared
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
@@ -21,24 +22,26 @@ logging.basicConfig(
 )
 # Get the current timestamp with microsecond precision
 
-
-def get_model_name(model_file, chip):
+def get_model_name(model_file, chip, solver):
     file_name = pathlib.Path(model_file).stem
     current_timestamp = datetime.datetime.now().timestamp()
     date_time = datetime.datetime.fromtimestamp(current_timestamp)
     str_date_time = date_time.strftime("%d-%m-%Y-%H:%M:%S")
-    return f"{chip}-{file_name}-{str_date_time}"
+    return f"{chip}-{file_name}-{solver}-{str_date_time}"
 
-def get_log_file_name(model_file, chip):
+def get_log_file_name(model_file, chip, solver):
     home = os.environ.get("HETERO_SCHEDULE_HOME")
-    log_file = home + "/log/" + get_model_name(model_file, chip) + ".log"
+    log_file = home + "/log/" + get_model_name(model_file, chip, solver) + ".log"
     return log_file
 
-def run_network_scheduling(model, chip):
+def run_network_scheduling(model, chip, solver):
     c = supported_chips[chip]
     df_graph = pd.read_csv(model)
     graph = GraphCost(df_graph, c)
-    results = solveDag(ILPSolver, graph, c, get_model_name(model, chip))
+    if solver == "ILP":
+        results = solveDag(ILPSolver, graph, c, get_model_name(model, chip, solver))
+    else:
+        results = solveDag(MinimalSolver, graph, c, get_model_name(model, chip, solver))
     exec_time = async_emulation(results, c)
     return results, exec_time
 
@@ -58,6 +61,7 @@ def get_args():
     )
     parser.add_argument("--dump", type=str, help="The prefix of dumping path")
     parser.add_argument("--log", help="Log file", action="store_true")
+    parser.add_argument("--solver", help="The solver to use", type=str, default="ILP")
     return parser.parse_args()
 
 
@@ -77,9 +81,10 @@ def main():
     chip = args.chip
     dump = args.dump
     log = args.log
+    solver = args.solver
 
     if log is not None:
-        log_path = get_log_file_name(model, chip)
+        log_path = get_log_file_name(model, chip, solver)
         print(f"Enable logging, store log to {log_path}")
 
         file_handler = logging.FileHandler(log_path)
@@ -88,7 +93,7 @@ def main():
         logging.getLogger("").addHandler(file_handler)
 
     if chip in supported_chips.keys():
-        r, t = run_network_scheduling(model, chip)
+        r, t = run_network_scheduling(model, chip, solver)
         logging.critical("Total time: {}".format(t.get_total_time()))
 
         if dump is not None:

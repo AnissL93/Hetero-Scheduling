@@ -26,7 +26,7 @@ class Solver(object):
             if self.cost[op][self.graph.get_dispatch(op).type] <= 0:
                 sel_p = None
                 min_time = 2 ** 32
-                for p in self.hardware.processors:
+                for p in self.chip.processors:
                     c = self.cost[op][p.type]
                     if c <= 0:
                         continue
@@ -35,25 +35,25 @@ class Solver(object):
                         min_time = self.cost[op][p.type]
                         sel_p = p
 
-                self.graph.set_dispatch(op, sel_p)
+                self.graph.set_dispatch(op, sel_p.id)
 
 
 class MinimalSolver(Solver):
-    def __init__(self, g: GraphCost, chip: Chip) -> None:
-        super().__init__(g, chip)
+    def __init__(self, g: GraphCost, chip: Chip, model_name = None) -> None:
+        super().__init__(g, chip, model_name)
 
     def solve(self):
-        for op in self.operations:
+        for op in self.graph.topo_sort():
             sel_p = None
             min_time = 2 ** 32
-            for proc in self.chip.processors:
-                c = self.graph.get_compute_cost_one_device(op, proc.type)
+            for pid, proc in self.chip.processors.items():
+                c = self.graph.get_compute_cost_one_device(op, proc)
                 if c <= 0:
                     continue
 
                 if c < min_time:
                     min_time = c
-                    sel_p = proc
+                    sel_p = pid
 
             self.graph.set_dispatch(op, sel_p)
 
