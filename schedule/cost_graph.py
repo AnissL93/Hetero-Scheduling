@@ -8,6 +8,7 @@ import ast
 import networkx as nx
 import copy
 
+
 if __name__ == "__main__":
     from color_combin import get_color_combination
     from processor import *
@@ -16,7 +17,6 @@ else:
     from .color_combin import get_color_combination
     from .processor import *
     from .processor import Chip, Processor
-
 
 class OpCost(object):
     """
@@ -84,7 +84,7 @@ class GraphCost(object):
     # SUPER_EXIT_NODE = "super_exit"
 
     def __init__(self, df_graph: pd.DataFrame = None,
-                 c: Chip = None):
+                 c: Chip = None, count_self_comm = True):
         # The graph structure
         self.nx_graph = None
         # The cost of a operation: {"op_name" : {"CPU": 1, "GPU": 2}}
@@ -93,6 +93,11 @@ class GraphCost(object):
         # comm_cost[edge[0], edge[1], pA, pB]
         self.comm_cost = {}
         self.chip = c
+
+        # subgraph related
+        self.subgraphs = {}
+        self.nx_subgraph = None
+        self.topo_sort_ops = None
 
         if df_graph is not None:
             self.init_graph(df_graph, c)
@@ -152,9 +157,11 @@ class GraphCost(object):
 
 
         _parse_structure()
-        self.topo_sort_ops = list(nx.topological_sort(self.nx_graph))
 
     def topo_sort(self):
+        if self.topo_sort_ops is None:
+            self.topo_sort_ops = list(nx.topological_sort(self.nx_graph))
+
         return self.topo_sort_ops
 
     def get_edges(self):
@@ -227,8 +234,46 @@ class GraphCost(object):
 
     def draw_graph_structure(self, pdf_file):
         tmp = nx.nx_agraph.to_agraph(self.nx_graph)
-        tmp.draw(pdf_file, prog="dot")
 
+        for i, sg in self.subgraphs.items():
+            tmp_sg = nx.nx_agraph.to_agraph(sg.nx_graph)
+            tmp_sg.draw(f"sg{i}_{pdf_file}", prog="dot")
+
+        for i,sg in self.subgraphs.items():
+            B = tmp.add_subgraph(sg.topo_sort(), name=f'cluster_{i}')
+            B.graph_attr["color"] = "skyblue"
+            B.graph_attr["label"] = f"SG{i}"
+            B.graph_attr["label"] = f"SG{i}"
+            B.graph_attr["fontcolor"] = "navyblue"
+
+        tmp.draw(pdf_file, prog="dot")
+        
+
+    def make_subgraphs(self, df: pd.DataFrame, network: pd.DataFrame):
+        sg_len = len(df)
+        self.nx_subgraph = nx.DiGraph()
+        for i in range(sg_len):
+            sg_id = str(df.loc[i]["subgraph_id"])
+            self.nx_subgraph.add_node(sg_id)
+            succs = list(ast.literal_eval(df.loc[i]["succs"]))
+            for suc in succs:
+                self.nx_subgraph.add_edge(sg_id, str(suc))
+
+            nodes = list(ast.literal_eval(df.loc[i]["nodes"]))
+            node_list = [network.loc[j]["op_id"] for j in nodes]
+
+            sg_cost = GraphCost()
+            sg_cost.nx_graph = self.nx_graph.subgraph(node_list)
+
+            # simply copy the the full op set which is indexed by op_id
+            sg_cost.op_cost = self.op_cost
+            sg_cost.op_types = self.op_types
+            sg_cost.comm_cost = self.comm_cost
+            sg_cost.chip = self.chip
+
+            self.subgraphs[sg_id] = sg_cost
+
+            
     def to_df(self):
         """
         Convert cost data to pd.DataFrame, the format is as following:
@@ -286,6 +331,17 @@ class GraphCost(object):
         """Dump the file to CSV format, converting with pandas."""
         self.to_df().to_csv(file_name)
 
+    def to_dispatch_graph(self):
+        g = DispatchedGraph()
+        g.__dict__.update(self.__dict__)
+
+        # convert all subgraph
+        if len(self.subgraphs) > 0:
+            for k,sg in self.subgraphs.items():
+                self.subgraphs[k] = sg.to_dispatch_graph()
+
+        return g
+
 class DispatchedGraph(GraphCost):
     def __init__(self, graph: GraphCost = None, dispatch : pd.DataFrame=None):
         if graph is not None:
@@ -325,6 +381,8 @@ class DispatchedGraph(GraphCost):
         """
         tmp_graph = copy.deepcopy(self.nx_graph)
 
+        logging.info(self.get_exec_order())
+
         # Update node assignment
         col = get_color_combination(len(chip.ids()))
         for i in self.get_exec_order():
@@ -346,16 +404,23 @@ class DispatchedGraph(GraphCost):
         tmp_graph = nx.DiGraph(tmp_graph)
         tmp_graph.add_node("Legend", label=legend_head, shape="box", fontname="FreeSans")
 
-        ### add comm cost for edges
+        logging.info("edges " + str(self.get_edges()))
+
         for e in self.get_edges():
             tmp_graph.edges[e]["label"] = self.get_dispatched_comm_cost(e[0], e[1])
             tmp_graph.edges[e]["fontname"] = "FreeSans"
 
-        # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
         tmp = nx.nx_agraph.to_agraph(tmp_graph)  # convert to a graphviz graph
+        for i,sg in self.subgraphs.items():
+            B = tmp.add_subgraph(sg.topo_sort(), name=f'cluster_{i}')
+            B.graph_attr["color"] = "black"
+            B.graph_attr["label"] = f"SG #{i}"
+
+        # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
         tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_dispatch(self, n):
+        print(self.dispatch_results)
         assert n in self.topo_sort()
         return self.dispatch_results[n]
 
@@ -386,15 +451,27 @@ class DispatchedGraph(GraphCost):
         p = self.chip.get_processor_by_id(self.get_dispatch(op))
         return self.get_compute_cost_one_device(op, p)
 
+    def merge_dispatch(self):
+        """Merge dispatch results from all subgraphs to the parent graph
+        """
+        if len(self.dispatch_results) > 0:
+            self.dispatch_results.clear()
+
+        for i, sg in self.subgraphs.items():
+            self.dispatch_results.update(sg.dispatch_results)
+
 
 if __name__ == "__main__":
     # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
-    df = pd.read_csv("data/net_perf/khadas/InceptionResnetV2.csv")
-    graph = GraphCost(df, khadas_chip)
+    df_net = pd.read_csv("data/net_perf/bst_comm/bev_conv_loaded_fix_sim_detail_comm.csv")
+    df_sg = pd.read_csv("third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bev_conv_bst.csv")
+
+    graph = GraphCost(df_net, bst_chip)
+    graph.make_subgraphs(df_sg, df_net)
     # # print(df)
     df = graph.to_df()
     print(df)
-    graph.to_graphviz("a.pdf")
+    graph.draw_graph_structure("xx.pdf")
 
 
     # read communication

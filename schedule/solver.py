@@ -339,9 +339,10 @@ class ILPSolver(Solver):
         self.problem.optimize()
 
         if self.model_name is not None:
-            self.problem.write("results/ilp/" + self.model_name + ".lp")
-            self.problem.write("results/ilp/" + self.model_name + ".mst")
-            self.problem.write("results/ilp/" + self.model_name + ".sol")
+            pass
+            # self.problem.write("results/ilp/" + self.model_name + ".lp")
+            # self.problem.write("results/ilp/" + self.model_name + ".mst")
+            # self.problem.write("results/ilp/" + self.model_name + ".sol")
 
         self.print_problem()
         self.get_device_dispatch_results()
@@ -372,7 +373,7 @@ class ILPSolver(Solver):
                 exit(-1)
 
 
-def solveDag(solverType, g: GraphCost, chip: Chip, model_name):
+def solveDag(solverType, g: DispatchedGraph, chip: Chip, model_name):
     """
     solverType: solve class, e.g., ILPSolver/BasicSolver/...
     cost: the cost of each operation, e.g.,
@@ -386,10 +387,21 @@ def solveDag(solverType, g: GraphCost, chip: Chip, model_name):
                           Processor("GPU", "GPU", "green"),])
 
     f->str : the output file name
-    """
-    solver = solverType(g, chip, model_name)
-    solver.solve()
-    # if f is not None:
-    #     solver.draw_results(f)
 
-    return solver.graph
+    the dispatched results will be stored in each subgraph or a graph
+    """
+
+    if len(g.subgraphs) > 0:
+        logging.info("----------------------------------Run all subgraphs")
+        for i, sg in g.subgraphs.items():
+            solver = solverType(sg, chip, f"sg{i}_{model_name}")
+            solver.solve()
+            g.subgraphs[i] = solver.graph
+    else:
+        logging.info("----------------------------------Run graph")
+        solver = solverType(g, chip, model_name)
+        solver.solve()
+        g = solver.graph
+
+    return g
+

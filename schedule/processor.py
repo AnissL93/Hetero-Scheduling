@@ -27,8 +27,9 @@ class Chip(object):
     }
     """
 
-    def __init__(self, ps: dict) -> None:
+    def __init__(self, ps: dict, _groups = None) -> None:
         self.processors = ps
+        self.groups = _groups
         pass
 
     def ids(self) -> list:
@@ -97,7 +98,7 @@ class Chip(object):
         ret = "<"
         for id, p in self.processors.items():
             ret += f"{id}({p.type})"
-            if id is self.processors.keys()[-1]:
+            if id is list(self.processors.keys())[-1]:
                 continue
             else:
                 ret += ", "
@@ -108,6 +109,14 @@ class Chip(object):
         """The first core is the main core."""
         return self.ids()[0]
 
+    def get_group_pid(self, i):
+        assert self.groups is not None
+        return self.groups[i]
+
+    def get_group_as_chip(self, i):
+        assert self.groups is not None
+        return Chip({k : self.processors[k] for k in self.groups[i]})
+
 
 maca = Processor("maca")
 cv_dsp = Processor("cv_dsp")
@@ -116,7 +125,12 @@ bst_chip = Chip({
     "cv_dsp0": cv_dsp,
     "maca": maca,
     "cv_dsp1": cv_dsp
-})
+},
+{
+    "group0": ["cv_dsp0", "maca"], 
+    #"group2": ["cv_dsp0", "maca", "cv_dsp1"], 
+}
+)
 
 bst_chip_dsp_only = Chip({
     "cv_dsp0": cv_dsp,
@@ -132,6 +146,10 @@ khadas_chip = Chip(
         "cpu_b": cpu_big,
         "cpu_s": cpu_small,
         "gpu": gpu
+    }, 
+    {
+        "group0": ["cpu_b", "cpu_s"],
+        "group1": ["cpu_b", "cpu_s", "gpu"],
     }
 )
 
