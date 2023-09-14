@@ -13,10 +13,13 @@ if __name__ == "__main__":
     from color_combin import get_color_combination
     from processor import *
     from processor import Chip, Processor
+    from schedule.device import khadas_device
 else:
     from .color_combin import get_color_combination
     from .processor import *
     from .processor import Chip, Processor
+    from .schedule.device import khadas_device
+
 
 class OpCost(object):
     """
@@ -84,7 +87,8 @@ class GraphCost(object):
     # SUPER_EXIT_NODE = "super_exit"
 
     def __init__(self, df_graph: pd.DataFrame = None,
-                 c: Chip = None, count_self_comm = True):
+                 df_subgraph: pd.DataFrame = None,
+                 gid = "g", chip: Chip = None,  count_self_comm=True):
         # The graph structure
         self.nx_graph = None
         # The cost of a operation: {"op_name" : {"CPU": 1, "GPU": 2}}
@@ -92,17 +96,25 @@ class GraphCost(object):
         self.op_types = {}
         # comm_cost[edge[0], edge[1], pA, pB]
         self.comm_cost = {}
-        self.chip = c
+        self.chip = chip
 
         # subgraph related
         self.subgraphs = {}
         self.nx_subgraph = None
         self.topo_sort_ops = None
 
+        self.df_graph = df_graph
+        self.df_subgraph = df_subgraph
+        self.graph_id = gid
+
         if df_graph is not None:
-            self.init_graph(df_graph, c)
+            self.init_graph(df_graph, chip)
+
+        if df_subgraph is not None:
+            self.make_subgraphs(df_subgraph)
 
     def init_graph(self, df: pd.DataFrame, chip: Chip):
+        self.df_graph = df
 
         def _parse_structure():
             """
@@ -146,17 +158,41 @@ class GraphCost(object):
                     dkey = str((d1.type, d2.type))
                     for i, suc in enumerate(suc_nodes):
                         if dkey in node.keys():
-                            print(node[dkey])
                             costs = ast.literal_eval(node[dkey])
                             assert len(costs) == len(suc_nodes)
                             self.comm_cost[node_id, suc].set(d1, d2, costs[i])
                         else:
                             self.comm_cost[node_id, suc].set(d1, d2, 0)
-                            logging.error("No communication is found, set cummunication to 0")
+                            logging.error(
+                                "No communication is found, set cummunication to 0")
                     pass
 
-
         _parse_structure()
+
+    def make_subgraphs(self, df: pd.DataFrame):
+        self.df_subgraph = df
+        sg_len = len(df)
+        self.nx_subgraph = nx.DiGraph()
+        for i in range(sg_len):
+            sg_id = str(df.loc[i]["subgraph_id"])
+            self.nx_subgraph.add_node(sg_id)
+            succs = list(ast.literal_eval(df.loc[i]["succs"]))
+            for suc in succs:
+                self.nx_subgraph.add_edge(sg_id, str(suc))
+
+            nodes = list(ast.literal_eval(df.loc[i]["nodes"]))
+            node_list = [self.df_graph.loc[j]["op_id"] for j in nodes]
+
+            sg_cost = GraphCost()
+            sg_cost.nx_graph = self.nx_graph.subgraph(node_list)
+
+            # simply copy the the full op set which is indexed by op_id
+            sg_cost.op_cost = self.op_cost
+            sg_cost.op_types = self.op_types
+            sg_cost.comm_cost = self.comm_cost
+            sg_cost.chip = self.chip
+
+            self.subgraphs[sg_id] = sg_cost
 
     def topo_sort(self):
         if self.topo_sort_ops is None:
@@ -175,10 +211,6 @@ class GraphCost(object):
         Get edges in both directions
         """
         return self.nx_graph.edges(data=True)
-
-    def to_graphviz(self, pdf_file):
-        tmp = nx.nx_agraph.to_agraph(self.nx_graph)  # convert to a graphviz graph
-        tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_exit_ops(self):
         return [n for n in self.topo_sort_ops if self.is_exit(n)]
@@ -232,48 +264,28 @@ class GraphCost(object):
         assert isinstance(d, Processor)
         return self.get_compute_cost(id).get_by_type(d.type)
 
-    def draw_graph_structure(self, pdf_file):
-        tmp = nx.nx_agraph.to_agraph(self.nx_graph)
+    def get_data_size(self, op):
+        if isinstance(op, str):
+            return self.df_graph[self.df_graph["op_id"] == op]["data_size"]
+        else:
+            assert False
 
-        for i, sg in self.subgraphs.items():
-            tmp_sg = nx.nx_agraph.to_agraph(sg.nx_graph)
-            tmp_sg.draw(f"sg{i}_{pdf_file}", prog="dot")
+    def get_read_cost(self, op, pid):
+        if pid in bst_chip.ids():
+            return int(self.df_graph[self.df_graph["op_id"] == op]["read"])
 
-        for i,sg in self.subgraphs.items():
-            B = tmp.add_subgraph(sg.topo_sort(), name=f'cluster_{i}')
-            B.graph_attr["color"] = "skyblue"
-            B.graph_attr["label"] = f"SG{i}"
-            B.graph_attr["label"] = f"SG{i}"
-            B.graph_attr["fontcolor"] = "navyblue"
+        elif pid in khadas_chip.ids():
+            data_size = self.get_data_size(op)
+            return khadas_device[pid].read(data_size)
 
-        tmp.draw(pdf_file, prog="dot")
-        
+    def get_write_cost(self, op, pid):
+        if pid in bst_chip.ids():
+            return int(self.df_graph[self.df_graph["op_id"] == op]["write"])
 
-    def make_subgraphs(self, df: pd.DataFrame, network: pd.DataFrame):
-        sg_len = len(df)
-        self.nx_subgraph = nx.DiGraph()
-        for i in range(sg_len):
-            sg_id = str(df.loc[i]["subgraph_id"])
-            self.nx_subgraph.add_node(sg_id)
-            succs = list(ast.literal_eval(df.loc[i]["succs"]))
-            for suc in succs:
-                self.nx_subgraph.add_edge(sg_id, str(suc))
+        elif pid in khadas_chip.ids():
+            data_size = self.get_data_size(op)
+            return khadas_device[pid].write(data_size)
 
-            nodes = list(ast.literal_eval(df.loc[i]["nodes"]))
-            node_list = [network.loc[j]["op_id"] for j in nodes]
-
-            sg_cost = GraphCost()
-            sg_cost.nx_graph = self.nx_graph.subgraph(node_list)
-
-            # simply copy the the full op set which is indexed by op_id
-            sg_cost.op_cost = self.op_cost
-            sg_cost.op_types = self.op_types
-            sg_cost.comm_cost = self.comm_cost
-            sg_cost.chip = self.chip
-
-            self.subgraphs[sg_id] = sg_cost
-
-            
     def to_df(self):
         """
         Convert cost data to pd.DataFrame, the format is as following:
@@ -311,7 +323,8 @@ class GraphCost(object):
                 for op in self.topo_sort():
                     costs = []
                     for suc in self.sucs(op):
-                        costs.append(self.get_comm_cost_for_device(op, suc, d1, d2))
+                        costs.append(
+                            self.get_comm_cost_for_device(op, suc, d1, d2))
 
                     cost_for_d1_d2.append(str(costs))
 
@@ -337,30 +350,116 @@ class GraphCost(object):
 
         # convert all subgraph
         if len(self.subgraphs) > 0:
-            for k,sg in self.subgraphs.items():
+            for k, sg in self.subgraphs.items():
                 self.subgraphs[k] = sg.to_dispatch_graph()
 
         return g
 
+    
+    def draw_graph_structure(self, pdf_file):
+        tmp_graph = copy.deepcopy(self.nx_graph)
+        # add subgraph structure
+        tmp_graph.add_nodes_from(self.nx_subgraph.nodes)
+        tmp_graph.add_edges_from(self.nx_subgraph.edges)
+
+        tmp = nx.nx_agraph.to_agraph(tmp_graph)
+
+        for i, sg in self.subgraphs.items():
+            tmp_sg = nx.nx_agraph.to_agraph(sg.nx_graph)
+            tmp_sg.draw(f"sg{i}_{pdf_file}", prog="dot")
+
+        for i, sg in self.subgraphs.items():
+            B = tmp.add_subgraph(sg.topo_sort(), name=f'cluster_{i}')
+            B.graph_attr["color"] = "skyblue"
+            B.graph_attr["label"] = f"SG{i}"
+            B.graph_attr["label"] = f"SG{i}"
+            B.graph_attr["fontcolor"] = "navyblue"
+
+        tmp.draw(pdf_file, prog="dot")
+
+class DispatchResult(dict):
+    def __init__(self, gid = "g"):
+        self.gid = gid
+        pass
+
+    def set(self, op, order, d, gid = None):
+        if gid is None:
+            gid = self.gid
+        self[gid, op] = (order, d)
+
+    def get(self, op, order, gid = None):
+        if gid is None:
+            gid = self.gid
+        return self[gid, op]
+
+    def get_exec_order(self, gid = None):
+        if gid is None:
+            gid = self.gid
+
+        ret = {}
+        for (_gid, op), (order, device) in self.items():
+            if _gid == gid:
+                ret[order] = op
+
+        return ret
+
+    def merge(self, other):
+        """Merge dispatch results from all subgraphs to the parent graph
+        """
+        if len(self) > 0:
+            self.clear()
+
+        self.update(other)
+
+    def to_df(self):
+        # op_id, group_id, dispatch 
+        d = []
+        for key, dist in self.items():
+            op, gid = key
+            print(key)
+            instance = [op, gid, dist]
+            d.append(instance)
+
+        return pd.DataFrame(d, columns = ["graph_id", "op_id", "dispatch"])
+
+    def from_df(self, df : pd.DataFrame):
+        length = len(df)
+        if "graph_id" not in df.columns:
+            for i in range(length):
+                op = str(df.loc[i]["op_id"])
+                dis = df.loc[i]["dispatch"]
+                if isinstance(dis, str):
+                    order, device = i, dis
+                else:
+                    order ,device = ast.literal_eval(dis)
+                self.set(op, order, device)
+        else:
+            # add subgraph
+            for i in range(length):
+                gid = str(df.loc[i]["graph_id"])
+                op = str(df.loc[i]["op_id"])
+                order ,device = ast.literal_eval(df.loc[i]["dispatch"])
+                self.set(op, order, device, gid)
+
 class DispatchedGraph(GraphCost):
-    def __init__(self, graph: GraphCost = None, dispatch : pd.DataFrame=None):
+    def __init__(self, graph: GraphCost = None, dispatch: pd.DataFrame = None):
         if graph is not None:
             self.__dict__.update(graph.__dict__)
 
-        self.dispatch_results = {}
-        if dispatch is not None:
-            length = len(dispatch)
-            for i in range(length):
-                op = str(dispatch.loc[i]["op_id"])
-                device = str(dispatch.loc[i]["dispatch"])
-                self.dispatch_results[op] = device
+        self.dispatch_results = DispatchResult()
+        self.dispatch_results.from_df(dispatch)
 
-    def set_dispatch(self, n, p: str):
+        # dispatch to subgraphs
+        if len(self.subgraphs) > 0:
+            for sgid in self.subgraphs.keys(): 
+                self.subgraphs[sgid].set_dispatch(d)
+                pass
+                
+    def dispatch_all_to(self, p):
+        """Set all dispatching result to processor `p`
         """
-        Dispatch node n to Processor p
-        """
-        assert n in self.topo_sort()
-        self.dispatch_results[n] = p
+        for i, n in enumerate(self.topo_sort()):
+            self.dispatch_results.set(n, i, p)
 
     def validate(self):
         for k, v in self.dispatch_results.items():
@@ -370,16 +469,15 @@ class DispatchedGraph(GraphCost):
 
         return True
 
-    def init_dispatch(self, df: pd.DataFrame, chip: Chip):
-        self.dispatch_results = {}
-        for i in range(len(df)):
-            self.dispatch_results[str(df.loc[i]["op_id"])] = chip.get_processor_by_id(df.loc[i]["dispatch"])
-
     def draw_results(self, chip: Chip, pdf_file):
         """
         Output the graph assignments
         """
         tmp_graph = copy.deepcopy(self.nx_graph)
+
+        # add subgraph structure
+        tmp_graph.add_node_from(self.nx_subgraph.nodes)
+        tmp_graph.add_edges_from(self.nx_subgraph.edges)
 
         logging.info(self.get_exec_order())
 
@@ -392,26 +490,30 @@ class DispatchedGraph(GraphCost):
                     tmp_graph.nodes[i]["shape"] = "Mrecord"
                     tmp_graph.nodes[i]["style"] = "filled"
                     tmp_graph.nodes[i]["fontname"] = "FreeSans"
-                    tmp_graph.nodes[i]["label"] = f"{i}\\n{self.op_types[i]}\\n{self.get_dispatched_compute_cost(i)}"
+                    tmp_graph.nodes[i][
+                        "label"] = f"{i}\\n{self.op_types[i]}\\n{self.get_dispatched_compute_cost(i)}"
 
-        ### add a legend for graph
+        # add a legend for graph
         legend_head = "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"> <TR> <TD COLSPAN=\"1\"><B>Legend</B></TD> </TR>"
         for i, p in enumerate(chip.ids()):
-            legend_head += "<TR><TD BGCOLOR=\"{}\">{}</TD></TR>\n".format(col[i], p)
+            legend_head += "<TR><TD BGCOLOR=\"{}\">{}</TD></TR>\n".format(
+                col[i], p)
 
         legend_head += "</TABLE>>"
 
         tmp_graph = nx.DiGraph(tmp_graph)
-        tmp_graph.add_node("Legend", label=legend_head, shape="box", fontname="FreeSans")
+        tmp_graph.add_node("Legend", label=legend_head,
+                           shape="box", fontname="FreeSans")
 
         logging.info("edges " + str(self.get_edges()))
 
         for e in self.get_edges():
-            tmp_graph.edges[e]["label"] = self.get_dispatched_comm_cost(e[0], e[1])
+            tmp_graph.edges[e]["label"] = self.get_dispatched_comm_cost(
+                e[0], e[1])
             tmp_graph.edges[e]["fontname"] = "FreeSans"
 
         tmp = nx.nx_agraph.to_agraph(tmp_graph)  # convert to a graphviz graph
-        for i,sg in self.subgraphs.items():
+        for i, sg in self.subgraphs.items():
             B = tmp.add_subgraph(sg.topo_sort(), name=f'cluster_{i}')
             B.graph_attr["color"] = "black"
             B.graph_attr["label"] = f"SG #{i}"
@@ -420,21 +522,19 @@ class DispatchedGraph(GraphCost):
         tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_dispatch(self, n):
-        print(self.dispatch_results)
         assert n in self.topo_sort()
         return self.dispatch_results[n]
 
-    def get_exec_order(self):
-        return list(self.dispatch_results.keys())
+    def get_exec_order(self, gid = None):
+        """Return a dict of execution order of operations
+        """
+        if gid is None:
+            gid = self.graph_id
+
+        return self.dispatch_results.get_exec_order(gid)
 
     def dispatch_to_df(self):
-        assign = [self.dispatch_results[n] for n in self.get_exec_order()]
-        data = {
-            "op_id": self.get_exec_order(),
-            "dispatch": assign
-        }
-        ddf = pd.DataFrame(data)
-        return ddf
+        return self.dispatch_results.to_df()
 
     def dispatch_to_csv(self, dispatch_csv_file):
         gdf = self.dispatch_to_df()
@@ -455,26 +555,37 @@ class DispatchedGraph(GraphCost):
         """Merge dispatch results from all subgraphs to the parent graph
         """
         if len(self.dispatch_results) > 0:
-            self.dispatch_results.clear()
+            self.dispatch_results.data.clear()
 
         for i, sg in self.subgraphs.items():
-            self.dispatch_results.update(sg.dispatch_results)
+            self.dispatch_results.data.update(sg.dispatch_results)
 
 
 if __name__ == "__main__":
     # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
-    df_net = pd.read_csv("data/net_perf/bst_comm/bev_conv_loaded_fix_sim_detail_comm.csv")
-    df_sg = pd.read_csv("third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bev_conv_bst.csv")
+    df_net = pd.read_csv(
+        "data/net_perf/bst_comm/bev_conv_loaded_fix_sim_detail_comm.csv")
+    df_sg = pd.read_csv(
+        "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bev_conv_bst.csv")
 
-    graph = GraphCost(df_net, bst_chip)
-    graph.make_subgraphs(df_sg, df_net)
+    df_dispatch = pd.read_csv("results/bst/bevformer_pipeline-bst.group0.ilp.dispatch.csv")
+
+    graph = GraphCost(df_net, df_subgraph = df_sg, chip = bst_chip.get_group_as_chip("group0"))
+
+    dist = DispatchResult()
+    dist.from_df(df_dispatch)
+    print(dist.to_df())
+    print(dist.get_exec_order())
+
+    print(graph.get_read_cost("Unsqueeze_12", "maca"))
+    print(graph.get_write_cost("Unsqueeze_12", "maca"))
     # # print(df)
     df = graph.to_df()
-    print(df)
-    graph.draw_graph_structure("xx.pdf")
-
+    graph.draw_graph_structure("xxx.pdf")
+    # print(df)
 
     # read communication
+
     def preprocess_comm():
         df = pd.read_csv("data/net_perf/bst/inception_v1_detail.csv")
         data = {
@@ -502,7 +613,6 @@ if __name__ == "__main__":
             for p1, p2 in bst_chip.get_type_combinations():
                 data[str([p1.type, p2.type])].append(str(comm_cost))
                 pass
-
 
         df_comm = pd.DataFrame(data)
         df_comm.to_csv("inception_v1_with_comm.csv")

@@ -27,7 +27,7 @@ class Chip(object):
     }
     """
 
-    def __init__(self, ps: dict, _groups = None) -> None:
+    def __init__(self, ps: dict, _groups : dict = None) -> None:
         self.processors = ps
         self.groups = _groups
         pass
@@ -128,7 +128,8 @@ bst_chip = Chip({
 },
 {
     "group0": ["cv_dsp0", "maca"], 
-    #"group2": ["cv_dsp0", "maca", "cv_dsp1"], 
+    "group1": ["cv_dsp0", "maca", "cv_dsp1"], 
+    "group2": ["cv_dsp0"], 
 }
 )
 
@@ -150,6 +151,7 @@ khadas_chip = Chip(
     {
         "group0": ["cpu_b", "cpu_s"],
         "group1": ["cpu_b", "cpu_s", "gpu"],
+        "group2": ["gpu"]
     }
 )
 

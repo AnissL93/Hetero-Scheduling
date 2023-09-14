@@ -89,7 +89,6 @@ def end2end():
     with open(args.config, 'r') as yaml_file:
         data = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
-    print(data)
     model = data.get("network")
     chips = data.get("chips")
     dump_path = data.get("dump_path")

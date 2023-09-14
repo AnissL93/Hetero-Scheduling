@@ -30,15 +30,14 @@ def get_log_file_name(model_file, chip, solver):
 
 
 def solve(model: str, chip: Chip, subgraph=None):
+    """The entry function for solving for a model on chip
+
+    Returns:
+        Solution: contain dispatch graph for all possible groups
+    """
     df_graph = pd.read_csv(model)
     df_subgraph = pd.read_csv(subgraph)
-    graph = GraphCost(df_graph, chip)
-
-    # Make subgraphs.
-    if subgraph is not None:
-        graph.make_subgraphs(df_subgraph, df_graph)
-
-    graph = graph.to_dispatch_graph()
+    graph = GraphCost(df_graph, df_subgraph, chip)
 
     if chip.groups is not None:
         solution = {}

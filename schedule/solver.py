@@ -17,29 +17,29 @@ FORCE_MAIN_CORE = False
 
 class Solver(object):
     def __init__(self, g: GraphCost, chip: Chip, name = None) -> None:
-        self.graph = DispatchedGraph(g)
+        self.graph = g
         self.chip = chip
         self.model_name = name
 
-    def rectify(self):
-        for op in self.operations:
-            if self.cost[op][self.graph.get_dispatch(op).type] <= 0:
-                sel_p = None
-                min_time = 2 ** 32
-                for p in self.chip.processors:
-                    c = self.cost[op][p.type]
-                    if c <= 0:
-                        continue
+    # def rectify(self):
+    #     for op in self.operations:
+    #         if self.cost[op][self.graph.get_dispatch(op).type] <= 0:
+    #             sel_p = None
+    #             min_time = 2 ** 32
+    #             for p in self.chip.processors:
+    #                 c = self.cost[op][p.type]
+    #                 if c <= 0:
+    #                     continue
 
-                    if c < min_time:
-                        min_time = self.cost[op][p.type]
-                        sel_p = p
+    #                 if c < min_time:
+    #                     min_time = self.cost[op][p.type]
+    #                     sel_p = p
 
-                self.graph.set_dispatch(op, sel_p.id)
+    #             self.graph.set_dispatch(op, sel_p.id)
 
 
 class MinimalSolver(Solver):
-    def __init__(self, g: GraphCost, chip: Chip, model_name = None) -> None:
+    def __init__(self, g: GraphCost, chip: Chip) -> None:
         super().__init__(g, chip, model_name)
 
     def solve(self):
@@ -56,6 +56,7 @@ class MinimalSolver(Solver):
                     sel_p = pid
 
             self.graph.set_dispatch(op, sel_p)
+            return self.graph.dispatch_results
 
 
 class ILPSolver(Solver):
@@ -345,23 +346,17 @@ class ILPSolver(Solver):
             # self.problem.write("results/ilp/" + self.model_name + ".sol")
 
         self.print_problem()
-        self.get_device_dispatch_results()
-
-    # def print_results(self):
-    #     for i in self.operations:
-    #         for j in self.hardware.processors:
-    #             if self.x[i][j.id].value() == 1:
-    #                 print(f"{self.x[i][j.id].value()} Operation {i} assigned to {j}")
-    #     logging.info(f"Total cost: {pulp.value(self.problem.objective)}")
+        return self.get_device_dispatch_results()
 
     def get_device_dispatch_results(self):
         order = self.get_execution_order()
-        for i in order:
+        dist = DispatchResult()
+        for idx, op in enumerate(order):
             has_dispatched = False
             for j in self.chip.ids():
-                if abs(1. - self.x[i, j].X) < RESULT_THR:
+                if abs(1. - self.x[op, j].X) < RESULT_THR:
                     has_dispatched = True
-                    self.graph.set_dispatch(i, j)
+                    dist.set(op, idx, j, self.graph.graph_id)
 
             if not has_dispatched:
                 logging.warning(
@@ -372,36 +367,73 @@ class ILPSolver(Solver):
                         pp(f"x of {i}, {j} = {self.x[i, j].X}")
                 exit(-1)
 
+        return dist
 
-def solveDag(solverType, g: DispatchedGraph, chip: Chip, model_name):
-    """
-    solverType: solve class, e.g., ILPSolver/BasicSolver/...
-    cost: the cost of each operation, e.g.,
-        {
-            "op1" : {"CPU1" : 1, "CPU2" : 2, "GPU": 3}
-            "op2" : {"CPU1" : 1, "CPU2" : 2, "GPU": 3}
-            ...
-        }
-    hardware: Chip([Processor("CPU1", "CPU", "red"),
-                          Processor("CPU2", "CPU", "blue"),
-                          Processor("GPU", "GPU", "green"),])
+class Solution(object):
 
-    f->str : the output file name
+    def __init__(self, g : GraphCost, chip : Chip, model_name = None):
+        assert len(chip.groups) > 0
+        self.origin_graph = g
+        self.chip = chip
+        self.model_name = model_name
+        self.solution = {}
 
-    the dispatched results will be stored in each subgraph or a graph
-    """
+    def get_solver(self, type):
+        if type == "ilp":
+            return ILPSolver
+        elif type == "naive":
+            return MinimalSolver
+        
+    def solve_graph(self, group : str, solver_type : str):
+        """
+        solverType: solve class, e.g., ILPSolver/BasicSolver/...
+        cost: the cost of each operation, e.g.,
+            {
+                "op1" : {"CPU1" : 1, "CPU2" : 2, "GPU": 3}
+                "op2" : {"CPU1" : 1, "CPU2" : 2, "GPU": 3}
+                ...
+            }
+        hardware: Chip([Processor("CPU1", "CPU", "red"),
+                              Processor("CPU2", "CPU", "blue"),
+                              Processor("GPU", "GPU", "green"),])
 
-    if len(g.subgraphs) > 0:
-        logging.info("----------------------------------Run all subgraphs")
-        for i, sg in g.subgraphs.items():
-            solver = solverType(sg, chip, f"sg{i}_{model_name}")
-            solver.solve()
-            g.subgraphs[i] = solver.graph
-    else:
-        logging.info("----------------------------------Run graph")
-        solver = solverType(g, chip, model_name)
-        solver.solve()
-        g = solver.graph
+        f->str : the output file name
 
-    return g
+        the dispatched results will be stored in each subgraph or a graph
+        """
+        ## init solution
+        chip = self.chip.get_group_as_chip(group)
+        g = self.origin_graph
+        dispatch = DispatchResult()
+        SolverType = self.get_solver(solver_type)
+        if len(g.subgraphs) > 0:
+            for i, sg in g.subgraphs.items():
+                solver = SolverType(sg, chip, f"sg{i}_{model_name}")
+                dist = solver.solve()
+                dispatch.update(dist)
+        else:
+            solver = SolverType(g, chip, model_name)
+            dispatch = solver.solve()
 
+        # set the final dispatch
+        self.solution[group, solver_type] = dispatch
+
+    def solve(self):
+        for group in self.chip.groups.keys():
+            self.solve_graph("ilp", group)
+            self.solve_graph("naive", group)
+
+    def dispatch_to_df(self):
+        """
+        graph_id, op_id, 
+        
+        """
+        for i, gs in solution.items():
+            c = chip.get_group_as_chip(i)
+            for gi, g_one_sol in gs.items():
+                g_one_sol.merge_dispatch()
+                g_one_sol.dispatch_to_df()
+        pass
+
+    def to_csv(self, csv_file):
+        pass

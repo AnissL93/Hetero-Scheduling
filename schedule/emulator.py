@@ -65,7 +65,9 @@ def async_emulation(graph: DispatchedGraph, chip: Chip):
 
             # first node, end_time = cost_time
             if graph.is_entry(op):
-                exec_time.do_compute(op, op_cost)
+                # add read time
+                read_time = graph.get_read_cost(op, graph.get_dispatch(op))
+                exec_time.do_compute(op, op_cost + read_time)
                 continue
 
             # max(prev compute finish time + communication cost)
@@ -79,6 +81,10 @@ def async_emulation(graph: DispatchedGraph, chip: Chip):
 
             exec_time.set_compute_st(op, st)
             exec_time.do_compute(op, op_cost)
+            # add write for
+            if graph.is_exit(op):
+                write_time = graph.get_write_cost(op, graph.get_dispatch(op))
+                exec_time.do_compute(op, write_time)
 
             if i + 1 < len(exec_order):
                 for p_id in chip.ids():
@@ -99,6 +105,12 @@ def sequence_emulation(graph, chip, exec_order, proc_dispatch):
 
 def ideal_emulation(graph, chip, exec_order, proc_dispatch):
     pass
+
+def pipeline_emulation(graph, split_point):
+
+
+    pass
+
 
 
 if __name__ == "__main__":
