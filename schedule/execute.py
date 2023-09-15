@@ -3,10 +3,20 @@ import datetime
 import pathlib
 import argparse
 import logging
-from .emulator import async_emulation
-from .processor import *
-from .solver import *
-from .cost_graph import *
+
+if __name__ == "__main__":
+    from emulator import async_emulation
+    from processor import *
+    from solver import *
+    from cost_graph import *
+    from pipeline import *
+else:
+    from .emulator import async_emulation
+    from .processor import *
+    from .solver import *
+    from .cost_graph import *
+    from .pipeline import *
+
 import os
 import sys
 
@@ -28,8 +38,7 @@ def get_log_file_name(model_file, chip, solver):
         get_model_name(model_file, chip, solver) + ".log"
     return log_file
 
-
-def solve(model: str, chip: Chip, subgraph=None):
+def solve(model: str, subgraph : str, chip: Chip, solver : Solver):
     """The entry function for solving for a model on chip
 
     Returns:
@@ -37,23 +46,22 @@ def solve(model: str, chip: Chip, subgraph=None):
     """
     df_graph = pd.read_csv(model)
     df_subgraph = pd.read_csv(subgraph)
-    graph = GraphCost(df_graph, df_subgraph, chip)
+    graph = GraphCost(df_graph, df_subgraph, chip =chip)
+    sol = Solution(graph, chip, solver, get_model_name(model, "bst", solver.ID))
+    sol.solve_and_run()
+    return sol
 
-    if chip.groups is not None:
-        solution = {}
-        for stg_id, stg_procs in chip.groups.items():
-            sub_chip = chip.get_group_as_chip(stg_id)
-            new_graph_ilp = copy.deepcopy(graph)
-            new_graph_minimal = copy.deepcopy(graph)
-            new_graph_ilp = solveDag(ILPSolver, new_graph_ilp, sub_chip,
-                                   stg_id + "-" + get_model_name(model, chip, "ilp"))
-            new_graph_minimal = solveDag(MinimalSolver, new_graph_minimal, sub_chip,
-                                   stg_id + "-" + get_model_name(model, chip, "naive"))
+def pipeline(sol):
+    pipeline = Pipeline(sol)
+    pipeline.eval_all(256)
+    print(f"performance: {pipeline.performance}")
+    return pipeline
 
-            solution[stg_id] = {"ilp": new_graph_ilp, "naive": new_graph_minimal}
-
-    return solution
-
+def main(model, subgraph, chip):
+    ilp_sol = solve(model, chip, subgraph, ILPSolver)
+    pipeline(ilp_sol)
+    df = pipeline.to_df()
+    ilp_name = get_model_name(model, chip, "ilp")
 
 def dump_results(solution, p, chip : Chip):
     for i, gs in solution.items():
@@ -63,23 +71,3 @@ def dump_results(solution, p, chip : Chip):
             g_one_sol.draw_results(c, p.with_suffix(f".{i}.{gi}.pdf"))
             g_one_sol.dispatch_to_csv(dispatch_csv_file=p.with_suffix(f".{i}.{gi}.dispatch.csv"))
     pass
-
-def estimate_for_groups(solution : dict, chip : Chip):
-    """Return estimation data for each subgraph run on all possible processor groups
-    """
-    _i, g = list(solution.items())[0]
-    data = {
-       "subgraph_id" : list(g["ilp"].subgraphs.keys()),
-    }
-    for i, sol in solution.items():
-        for k, s in sol.items():
-            l = []
-            c = chip.get_group_as_chip(i)
-
-            for j,sg in s.subgraphs.items():
-                time = async_emulation(sg, c)
-                l.append(time.get_total_time())
-
-            data[i + "-" + k] = l
-
-    return pd.DataFrame(data)

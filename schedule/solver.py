@@ -10,6 +10,7 @@ from collections import defaultdict
 import sys
 
 from .cost_graph import *
+from .emulator import async_emulation
 
 MAX_FLOAT = 1e20
 RESULT_THR = 0.0001
@@ -37,13 +38,29 @@ class Solver(object):
 
     #             self.graph.set_dispatch(op, sel_p.id)
 
+    def assign_to_one(self):
+        if len(self.chip.ids()) == 1:
+            p = self.chip.ids()[0]
+            ret = DispatchResult(self.graph.graph_id)
+            for i, op in enumerate(self.graph.topo_sort()):
+                ret.set(op, i, p)
+            return ret
+        else:
+            return None
 
 class MinimalSolver(Solver):
-    def __init__(self, g: GraphCost, chip: Chip) -> None:
+    ID = "naive"
+
+    def __init__(self, g: GraphCost, chip: Chip, model_name) -> None:
         super().__init__(g, chip, model_name)
 
     def solve(self):
-        for op in self.graph.topo_sort():
+        to_one = self.assign_to_one()
+        if to_one is not None:
+            return to_one
+
+        ret = DispatchResult(self.graph.graph_id)
+        for order, op in enumerate(self.graph.topo_sort()):
             sel_p = None
             min_time = 2 ** 32
             for pid, proc in self.chip.processors.items():
@@ -54,12 +71,15 @@ class MinimalSolver(Solver):
                 if c < min_time:
                     min_time = c
                     sel_p = pid
+            ret.set(op, order, sel_p) 
 
-            self.graph.set_dispatch(op, sel_p)
-            return self.graph.dispatch_results
+        return ret
 
 
 class ILPSolver(Solver):
+
+    ID = "ilp"
+
     def __init__(self, g, chip: Chip, model_name = None) -> None:
         super().__init__(g, chip, model_name)
         self.prepare()
@@ -335,6 +355,10 @@ class ILPSolver(Solver):
             constraint_force_main_core()
 
     def solve(self):
+        to_one = self.assign_to_one()
+        if to_one is not None:
+            return to_one
+
         self.objective_func()
         self.add_constraints()
         self.problem.optimize()
@@ -350,7 +374,7 @@ class ILPSolver(Solver):
 
     def get_device_dispatch_results(self):
         order = self.get_execution_order()
-        dist = DispatchResult()
+        dist = DispatchResult(self.graph.graph_id)
         for idx, op in enumerate(order):
             has_dispatched = False
             for j in self.chip.ids():
@@ -371,20 +395,22 @@ class ILPSolver(Solver):
 
 class Solution(object):
 
-    def __init__(self, g : GraphCost, chip : Chip, model_name = None):
+    def __init__(self, g : GraphCost, chip : Chip, solver_type : Solver, model_name):
         assert len(chip.groups) > 0
         self.origin_graph = g
         self.chip = chip
         self.model_name = model_name
-        self.solution = {}
+        self.dispatch_results = {}
+        self.emulation_results = {}
+        self.solver_type = solver_type
 
-    def get_solver(self, type):
-        if type == "ilp":
-            return ILPSolver
-        elif type == "naive":
-            return MinimalSolver
+    def get_dispatch(self, group : str, sg_id):
+        return self.dispatch_results[group, sg_id]
+
+    def get_emulation_time(self, group : str, sg_id):
+        return self.emulation_results[group, sg_id]
         
-    def solve_graph(self, group : str, solver_type : str):
+    def solve_graph(self, SolverType, group : str):
         """
         solverType: solve class, e.g., ILPSolver/BasicSolver/...
         cost: the cost of each operation, e.g.,
@@ -405,35 +431,66 @@ class Solution(object):
         chip = self.chip.get_group_as_chip(group)
         g = self.origin_graph
         dispatch = DispatchResult()
-        SolverType = self.get_solver(solver_type)
         if len(g.subgraphs) > 0:
             for i, sg in g.subgraphs.items():
-                solver = SolverType(sg, chip, f"sg{i}_{model_name}")
+                if not sg.can_support_chip(chip):
+                    logging.info(f"Subgraph {sg.graph_id} does not support chip {str(chip)}")
+                    self.dispatch_results[group, sg.graph_id] = None
+                    self.emulation_results[group, sg.graph_id] = None
+                    continue
+
+                solver = SolverType(sg, chip, f"{sg.graph_id}_{self.model_name}")
                 dist = solver.solve()
-                dispatch.update(dist)
+                # gather all dispatch info to parent graph
+                self.dispatch_results[group, sg.graph_id] = dist
+                logging.info(f"---------------- solve finished {sg.graph_id}---------------")
+
+                # eval cost
+                total_time = async_emulation(sg, dist, chip).get_total_time()
+                self.emulation_results[group, sg.graph_id] = total_time
+
         else:
-            solver = SolverType(g, chip, model_name)
+            solver = SolverType(g, chip, f"{g.graph_id}_{self.model_name}")
             dispatch = solver.solve()
+            self.dispatch_results[group, g.graph_id] = dispatch
 
-        # set the final dispatch
-        self.solution[group, solver_type] = dispatch
+            logging.info("---------------- solve finished ---------------")
 
-    def solve(self):
+            total_time = async_emulation(g, dist, chip).get_total_time()
+            self.emulation_results[group, g.graph_id] = total_time
+
+    def solve_and_run(self):
+        """Get the dispatch results and get estimated cost for <group, subgraph>
+        """
         for group in self.chip.groups.keys():
-            self.solve_graph("ilp", group)
-            self.solve_graph("naive", group)
+            logging.info(f"Solve graph {group}")
+            self.solve_graph(self.solver_type, group)
 
     def dispatch_to_df(self):
         """
-        graph_id, op_id, 
-        
+        "group", "graph_id", "op_id", order, dispatch
         """
-        for i, gs in solution.items():
-            c = chip.get_group_as_chip(i)
-            for gi, g_one_sol in gs.items():
-                g_one_sol.merge_dispatch()
-                g_one_sol.dispatch_to_df()
-        pass
+        array = []
+        print(self.dispatch_results.keys())
+        for (group, sg_id), dispatch in self.dispatch_results.items():
+            for op_id in self.origin_graph.subgraphs[sg_id].topo_sort():
+                if dispatch is None:
+                    order, disp = None, None
+                else:
+                    order ,disp = dispatch.get(op_id, sg_id)
 
-    def to_csv(self, csv_file):
-        pass
+                array.append([
+                    group,
+                    sg_id,
+                    op_id,
+                    order,
+                    disp
+                ])
+        return pd.DataFrame(array, columns = ["group_id", "graph_id","op_id", "order", "dispatch"])
+
+    def emu_time_to_df(self):
+        array = []
+        for (group, sg_id), time in self.emulation_results.items():
+            array.append([ group, sg_id, time ])
+
+        return pd.DataFrame(array, columns=["group_id", "graph_id", "time"])

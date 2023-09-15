@@ -27,9 +27,10 @@ class Chip(object):
     }
     """
 
-    def __init__(self, ps: dict, _groups : dict = None) -> None:
+    def __init__(self, ps: dict, _groups : dict = None, _proc_group = None) -> None:
         self.processors = ps
         self.groups = _groups
+        self.proc_groups = _proc_group
         pass
 
     def ids(self) -> list:
@@ -117,6 +118,9 @@ class Chip(object):
         assert self.groups is not None
         return Chip({k : self.processors[k] for k in self.groups[i]})
 
+    def get_proc_groups(self):
+        return self.proc_groups
+
 
 maca = Processor("maca")
 cv_dsp = Processor("cv_dsp")
@@ -129,8 +133,14 @@ bst_chip = Chip({
 {
     "group0": ["cv_dsp0", "maca"], 
     "group1": ["cv_dsp0", "maca", "cv_dsp1"], 
-    "group2": ["cv_dsp0"], 
-}
+    "group2": ["cv_dsp1"], 
+},
+[
+    ["group0", "group2"],
+    ["group2", "group0"],
+    ["group1"]
+]
+
 )
 
 bst_chip_dsp_only = Chip({
@@ -151,8 +161,21 @@ khadas_chip = Chip(
     {
         "group0": ["cpu_b", "cpu_s"],
         "group1": ["cpu_b", "cpu_s", "gpu"],
-        "group2": ["gpu"]
-    }
+        "group_gpu": ["gpu"],
+        "group_big": ["cpu_b"],
+        "group_small": ["cpu_s"]
+    },
+    [
+        ["group1"],
+        ["group0", "group_gpu"],
+        ["group_gpu", "group0"],
+        ["group_gpu", "group_big", "group_small"],
+        ["group_gpu", "group_small", "group_big"],
+        ["group_big", "group_gpu", "group_small"],
+        ["group_big", "group_small", "group_gpu"],
+        ["group_small", "group_gpu", "group_big"],
+        ["group_small", "group_big", "group_gpu"]
+    ]
 )
 
 khadas_chip_cpu_only = Chip(

@@ -7,7 +7,7 @@ Input:
   Execution order
   Processor dispatching
 """
-from .cost_graph import GraphCost, DispatchedGraph
+from .cost_graph import GraphCost, DispatchedGraph,DispatchResult
 from .processor import Processor, Chip
 import numpy as np
 import logging
@@ -42,19 +42,23 @@ class ExecTime(object):
     def get_total_time(self):
         return max([e.end for k, e in self.compute_time.items()])
 
+def async_emulation(graph_cost: GraphCost, dispatch : DispatchResult, chip: Chip):
 
-def async_emulation(graph: DispatchedGraph, chip: Chip):
     def validate():
         assert isinstance(graph, GraphCost)
         assert isinstance(chip, Chip)
 
-    exec_order = graph.get_exec_order()
+    graph = DispatchedGraph(graph_cost)
+    graph.dispatch_results = dispatch
+    print(dispatch)
+
+    exec_order = graph.get_exec_order_vec()
     exec_time = ExecTime(exec_order)
 
     def run():
         avail_proc = {op: {p_id: 0 for p_id in chip.ids()} for op in exec_order}
 
-        for i, op in enumerate(exec_order):
+        for i,op in enumerate(exec_order):
             assigned_p_id = graph.get_dispatch(op)
 
             # current op cost
@@ -71,12 +75,14 @@ def async_emulation(graph: DispatchedGraph, chip: Chip):
                 continue
 
             # max(prev compute finish time + communication cost)
-            max_prev_finished_time = np.max(
-                np.array([exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op) for p in graph.prevs(op)])
-            )
+            print(graph.prevs(op))
+            array = np.array([exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op) for p in graph.prevs(op)])
+            print(array)
+            print([exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op) for p in graph.prevs(op)])
+            max_prev_finished_time = np.max( array)
 
-            st = np.max(
-                np.array([avail_proc[op][assigned_p_id], max_prev_finished_time])
+            st = max(
+                [avail_proc[op][assigned_p_id], max_prev_finished_time]
             )
 
             exec_time.set_compute_st(op, st)
