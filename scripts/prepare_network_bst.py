@@ -33,12 +33,15 @@ def get_comm_data(path, file_name):
         df[str(k)] = comm[k]
 
     new_file = pathlib.Path(file_name).stem + "_comm.csv"
-    df.to_csv(path + "/" + new_file)
+    new_path = path + "/" + new_file
+    print("Save csv to ", new_path)
+    df.to_csv(new_path)
 
     print(df)
 
-p = "./data/net_perf/bst_data"
-for name in os.listdir(p):
-    if "detail" in name and "comm" not in name:
-        print(name)
-        get_comm_data(p, name)
+p = "./data/net_perf/bst"
+get_comm_data(p, "inception_resnet_v2_detail.csv")
+# for name in os.listdir(p):
+#     if "detail" in name and "comm" not in name and "resnet" in :
+#         print(name)
+#         get_comm_data(p, name)

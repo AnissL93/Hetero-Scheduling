@@ -16,6 +16,7 @@ else:
     from .solver import *
     from .cost_graph import *
     from .pipeline import *
+    from .file import load_dispatch
 
 import os
 import sys
@@ -38,7 +39,7 @@ def get_log_file_name(model_file, chip, solver):
         get_model_name(model_file, chip, solver) + ".log"
     return log_file
 
-def solve(model: str, subgraph : str, chip: Chip, solver : Solver):
+def solve(model: str, subgraph : str, chip_id : str, solver : Solver, dispatch_file = None):
     """The entry function for solving for a model on chip
 
     Returns:
@@ -46,15 +47,27 @@ def solve(model: str, subgraph : str, chip: Chip, solver : Solver):
     """
     df_graph = pd.read_csv(model)
     df_subgraph = pd.read_csv(subgraph)
-    graph = GraphCost(df_graph, df_subgraph, chip =chip)
+
+    by_position = False
+    count_self = True
+
+    if "bst" in chip_id:
+        by_position = True
+        # count this
+        count_self = True
+
+    chip = supported_chips[chip_id]
+    graph = GraphCost(df_graph, df_subgraph, "g", chip, count_self, by_position)
+    if dispatch_file is not None:
+        dispatch = load_dispatch(dispatch_file)
+
     sol = Solution(graph, chip, solver, get_model_name(model, "bst", solver.ID))
     sol.solve_and_run()
     return sol
 
-def pipeline(sol):
-    pipeline = Pipeline(sol)
+def pipeline(sol, factor):
+    pipeline = Pipeline(sol, factor)
     pipeline.eval_all(256)
-    print(f"performance: {pipeline.performance}")
     return pipeline
 
 def main(model, subgraph, chip):

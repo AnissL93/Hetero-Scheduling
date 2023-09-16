@@ -384,7 +384,7 @@ class ILPSolver(Solver):
 
             if not has_dispatched:
                 logging.warning(
-                    f"Error: {i} is not dispatched, dispatch to the one with minimum cost"
+                    f"Error: {idx} is not dispatched, dispatch to the one with minimum cost"
                 )
                 for i in self.graph.topo_sort():
                     for j in self.chip.ids():
@@ -409,8 +409,28 @@ class Solution(object):
 
     def get_emulation_time(self, group : str, sg_id):
         return self.emulation_results[group, sg_id]
-        
-    def solve_graph(self, SolverType, group : str):
+
+    def run_group(self, group):
+        chip = self.chip.get_group_as_chip(group)
+        g = self.origin_graph
+        dispatch = DispatchResult()
+        print(self.dispatch_results.keys())
+        if len(g.subgraphs) > 0:
+            for i, sg in g.subgraphs.items():
+                if self.dispatch_results[group, sg.graph_id] is None:
+                    logging.info(f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}")
+                    continue
+
+                dist = self.dispatch_results[group, sg.graph_id]
+                total_time = async_emulation(sg, dist, chip).get_total_time()
+                self.emulation_results[group, sg.graph_id] = total_time
+
+        else:
+            dist = self.dispatch_results[group, g.graph_id]
+            total_time = async_emulation(g, dist, chip).get_total_time()
+            self.emulation_results[group, g.graph_id] = total_time
+
+    def solve_group(self, SolverType, group : str):
         """
         solverType: solve class, e.g., ILPSolver/BasicSolver/...
         cost: the cost of each operation, e.g.,
@@ -443,35 +463,28 @@ class Solution(object):
                 dist = solver.solve()
                 # gather all dispatch info to parent graph
                 self.dispatch_results[group, sg.graph_id] = dist
-                logging.info(f"---------------- solve finished {sg.graph_id}---------------")
-
-                # eval cost
-                total_time = async_emulation(sg, dist, chip).get_total_time()
-                self.emulation_results[group, sg.graph_id] = total_time
 
         else:
             solver = SolverType(g, chip, f"{g.graph_id}_{self.model_name}")
             dispatch = solver.solve()
             self.dispatch_results[group, g.graph_id] = dispatch
 
-            logging.info("---------------- solve finished ---------------")
-
-            total_time = async_emulation(g, dist, chip).get_total_time()
-            self.emulation_results[group, g.graph_id] = total_time
-
-    def solve_and_run(self):
+    def solve_and_run(self, skip_solver = False):
         """Get the dispatch results and get estimated cost for <group, subgraph>
         """
         for group in self.chip.groups.keys():
-            logging.info(f"Solve graph {group}")
-            self.solve_graph(self.solver_type, group)
+            logging.info(f"Solve group {group}")
+            if not skip_solver:
+                self.solve_group(self.solver_type, group)
+            else:
+                logging.info(">>>>>>>>>>> Skip solver!")
+            self.run_group(group)
 
     def dispatch_to_df(self):
         """
         "group", "graph_id", "op_id", order, dispatch
         """
         array = []
-        print(self.dispatch_results.keys())
         for (group, sg_id), dispatch in self.dispatch_results.items():
             for op_id in self.origin_graph.subgraphs[sg_id].topo_sort():
                 if dispatch is None:

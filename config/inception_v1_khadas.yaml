@@ -1,4 +1,4 @@
 model: "data/net_perf/khadas/InceptionV1.csv"
-subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/InceptionV1_bst.csv"
+subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/khadas/InceptionV1_bst.csv"
 chip_id: "khadas"
-dump_path: "results/khadas/InceptionV1_pipeline"
+dump_path: "results/pipeline/khadas/InceptionV1_pipeline"

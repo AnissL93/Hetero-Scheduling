@@ -107,6 +107,7 @@ class GraphCost(object):
         self.df_subgraph = df_subgraph
         self.graph_id = gid
         self.by_position = by_position
+        self.count_self_comm = True
 
         if df_graph is not None:
             self.init_graph(df_graph, chip)
@@ -162,7 +163,10 @@ class GraphCost(object):
                         if dkey in node.keys():
                             costs = ast.literal_eval(node[dkey])
                             assert len(costs) == len(suc_nodes)
-                            self.comm_cost[node_id, suc].set(d1, d2, costs[i])
+                            if self.count_self_comm:
+                                self.comm_cost[node_id, suc].set(d1, d2, costs[i])
+                            else:
+                                self.comm_cost[node_id, suc].set(d1, d2, 0)
                         else:
                             self.comm_cost[node_id, suc].set(d1, d2, 0)
                             logging.error(
@@ -293,17 +297,25 @@ class GraphCost(object):
         return self.get_compute_cost(id).get_by_type(d.type)
 
     def get_data_size(self, op):
-        if isinstance(op, str):
-            return self.df_graph[self.df_graph["op_id"] == op]["data_size"]
-        else:
-            assert False
+        ds = self.df_graph[self.df_graph["op_id"] == int(op)]["data_size"].index
+        if len(ds) > 0:
+            return ds[0]
+
+        ds = self.df_graph[self.df_graph["op_id"] == str(op)]["data_size"].index
+        if len(ds) > 0:
+            return ds[0]
+
+        assert False
 
     def get_read_cost(self, op, pid):
+        print(pid)
         if pid in bst_chip.ids():
             return int(self.df_graph[self.df_graph["op_id"] == op]["read"])
 
         elif pid in khadas_chip.ids():
+            print("here")
             data_size = self.get_data_size(op)
+            print(data_size)
             return khadas_device[pid].read(data_size)
 
     def get_write_cost(self, op, pid):
@@ -451,7 +463,6 @@ class DispatchResult(dict):
         d = []
         for key, dist in self.items():
             op, gid = key
-            print(key)
             instance = [op, gid, dist]
             d.append(instance)
 
@@ -473,7 +484,8 @@ class DispatchResult(dict):
             for i in range(length):
                 gid = str(df.loc[i]["graph_id"])
                 op = str(df.loc[i]["op_id"])
-                order, device = ast.literal_eval(df.loc[i]["dispatch"])
+                device = df.loc[i]["dispatch"]
+                order = df.loc[i]["order"]
                 self.set(op, order, device, gid)
 
 
@@ -557,6 +569,7 @@ class DispatchedGraph(GraphCost):
             B.graph_attr["label"] = f"SG #{i}"
 
         # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
+        print(tmp.string())
         tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_dispatch(self, n):
@@ -606,23 +619,25 @@ class DispatchedGraph(GraphCost):
 if __name__ == "__main__":
     # df = pd.read_csv("data/net_perf/bst/inception_v1_block.csv")
     df_net = pd.read_csv(
-        "data/net_perf/khadas/InceptionV1.csv")
+        "data/net_perf/bst_comm/inception_v1_detail_comm.csv")
     df_sg = pd.read_csv(
-        "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/InceptionV1_bst.csv")
+        "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bst/InceptionV1_bst.csv")
 
-    df_dispatch = pd.read_csv(
-        "results/bst/bevformer_pipeline-bst.group0.ilp.dispatch.csv")
+    df_dispatch = pd.read_csv("results/bst/bevconv_pipeline-naive.dispatch.csv")
 
     graph = GraphCost(df_net, df_subgraph=df_sg,
-                      chip=khadas_chip)
+                      chip=bst_chip, by_position=True)
+
+    print(bst_chip.proc_groups[0])
+    print("can support ", graph.can_support_chip(
+        graph.chip.get_group_as_chip("group_maca")))
 
     graph.draw_graph_structure("graph_structure.pdf")
-    exit(-1)
 
     dist = DispatchResult()
     dist.from_df(df_dispatch)
-    print(dist.to_df())
-    print(dist.get_exec_order())
+
+    exit(-1)
 
     print(graph.get_read_cost("Unsqueeze_12", "maca"))
     print(graph.get_write_cost("Unsqueeze_12", "maca"))

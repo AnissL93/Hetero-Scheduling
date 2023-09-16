@@ -116,6 +116,7 @@ class Chip(object):
 
     def get_group_as_chip(self, i):
         assert self.groups is not None
+        print(self.groups)
         return Chip({k : self.processors[k] for k in self.groups[i]})
 
     def get_proc_groups(self):
@@ -132,15 +133,22 @@ bst_chip = Chip({
 },
 {
     "group0": ["cv_dsp0", "maca"], 
-    "group1": ["cv_dsp0", "maca", "cv_dsp1"], 
-    "group2": ["cv_dsp1"], 
+    "group1": ["cv_dsp0", "maca", "cv_dsp1"],
+    "group2": ["cv_dsp0", "cv_dsp1"],
+    "group_dsp0": ["cv_dsp0"],
+    "group_dsp1": ["cv_dsp1"],
+    "group_maca": ["maca"],
 },
 [
-    ["group0", "group2"],
-    ["group2", "group0"],
-    ["group1"]
+    ["group0", "group_dsp1"],
+    ["group_dsp1", "group0"],
+    ["group2", "group_maca"],
+    ["group_maca", "group2"],
+    ["group1"],
+    ["group_maca", "group_dsp0", "group_dsp1"],
+    ["group_dsp0", "group_maca", "group_dsp1"],
+    ["group_dsp0", "group_dsp1", "group_maca"],
 ]
-
 )
 
 bst_chip_dsp_only = Chip({

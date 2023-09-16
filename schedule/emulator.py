@@ -50,9 +50,9 @@ def async_emulation(graph_cost: GraphCost, dispatch : DispatchResult, chip: Chip
 
     graph = DispatchedGraph(graph_cost)
     graph.dispatch_results = dispatch
-    print(dispatch)
 
     exec_order = graph.get_exec_order_vec()
+    print("exec order ", exec_order)
     exec_time = ExecTime(exec_order)
 
     def run():
@@ -75,10 +75,11 @@ def async_emulation(graph_cost: GraphCost, dispatch : DispatchResult, chip: Chip
                 continue
 
             # max(prev compute finish time + communication cost)
-            print(graph.prevs(op))
-            array = np.array([exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op) for p in graph.prevs(op)])
-            print(array)
-            print([exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op) for p in graph.prevs(op)])
+            array = []
+            for p in graph.prevs(op):
+                t = exec_time.get_compute_ed(p) + graph.get_dispatched_comm_cost(p, op)
+                array.append(t)
+
             max_prev_finished_time = np.max( array)
 
             st = max(

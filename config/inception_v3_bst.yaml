@@ -1,0 +1,4 @@
+model: "data/net_perf/bst_comm/inception_v3_detail_comm.csv"
+subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bst/InceptionV3_bst.csv"
+chip_id: "bst"
+dump_path: "results/pipeline/bst/inceptionv3_pipeline"
