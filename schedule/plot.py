@@ -31,8 +31,8 @@ def plot_pareto(ax, df : pd.DataFrame):
         elif isinstance(i, tuple):
             ii = i
 
-        latency.append(ii[1])
-        thr.append(1./ ii[0])
+        latency.append(ii[0])
+        thr.append(1./ ii[1])
 
     latency = scale_0_1(latency)
     thr = scale_0_1(thr)

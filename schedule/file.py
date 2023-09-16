@@ -1,5 +1,8 @@
 import pathlib
 import pandas as pd
+import logging
+import networkx as nx
+import math
 
 if __name__ == "__main__":
     from schedule.cost_graph import DispatchResult
@@ -31,6 +34,7 @@ class FileName(object):
 
 
 def load_dispatch(path):
+    logging.info(path)
     df = pd.read_csv(path)
     group_id = df["group_id"].unique()
     graph_id = df["graph_id"].unique()
@@ -38,18 +42,32 @@ def load_dispatch(path):
     ret = {}
 
     for group in group_id:
+        group_df = df[df["group_id"] == group]
         for graph in graph_id:
-            ret[group, graph] = DispatchResult()
+            graph_df = group_df[group_df["graph_id"] == graph]
+            ret[group, graph] = DispatchResult(graph)
+            for i in graph_df.index:
+                ins = graph_df.loc[i]
+                disp = ins["dispatch"]
+                if disp is None or disp == "null" or pd.isna(disp):
+                    logging.info(f"Skip loading {ins}")
+                    continue
 
-    for i in range(len(df)):
-        ins = df.loc[i]
-        g1 = ins["group_id"]
-        g2 = ins["graph_id"]
-        ret[g1,g2].set(ins["op_id"], ins["order"], ins["dispatch"], ins["graph_id"])
-
+                # add new elements
+                ret[group, graph].set(ins["op_id"], ins["order"], ins["dispatch"])
+    # remove group that is all None
     return ret
+
+def dump_graph(g, pdf_file, print_dot = True):
+    tmp = nx.nx_agraph.to_agraph(g)
+    if print_dot:
+        print(tmp.string())
+    tmp.draw(pdf_file, prog="dot")
 
 
 if __name__ == "__main__":
     path = "results/bst/bevconv_pipeline-naive.dispatch.csv"
-    print(load_dispatch(path))
+    d = load_dispatch(path)
+    print(d["group0", 27])
+    print(d["group0", 27].get_exec_order_vec())
+

@@ -26,7 +26,7 @@ import yaml
 
 logging.basicConfig(
     level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Set the log message format
+    format="[%(filename)s:%(lineno)d] - %(levelname)s - %(message)s",  # Set the log message format
     datefmt="%Y-%m-%d %H:%M:%S",  # (Optional) Set the date format
 )
 

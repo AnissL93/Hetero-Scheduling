@@ -408,22 +408,22 @@ class Solution(object):
         return self.dispatch_results[group, sg_id]
 
     def get_emulation_time(self, group : str, sg_id):
+        assert isinstance(sg_id, int)
         return self.emulation_results[group, sg_id]
 
     def run_group(self, group):
         chip = self.chip.get_group_as_chip(group)
         g = self.origin_graph
-        dispatch = DispatchResult()
-        print(self.dispatch_results.keys())
         if len(g.subgraphs) > 0:
             for i, sg in g.subgraphs.items():
-                if self.dispatch_results[group, sg.graph_id] is None:
-                    logging.info(f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}")
-                    continue
-
                 dist = self.dispatch_results[group, sg.graph_id]
-                total_time = async_emulation(sg, dist, chip).get_total_time()
-                self.emulation_results[group, sg.graph_id] = total_time
+                logging.info(dist)
+                if dist is None or dist is "null" or len(dist) == 0:
+                    logging.info(f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}")
+                    self.emulation_results[group, sg.graph_id] = -1
+                else:
+                    total_time = async_emulation(sg, dist, chip).get_total_time()
+                    self.emulation_results[group, sg.graph_id] = total_time
 
         else:
             dist = self.dispatch_results[group, g.graph_id]
@@ -450,7 +450,6 @@ class Solution(object):
         ## init solution
         chip = self.chip.get_group_as_chip(group)
         g = self.origin_graph
-        dispatch = DispatchResult()
         if len(g.subgraphs) > 0:
             for i, sg in g.subgraphs.items():
                 if not sg.can_support_chip(chip):
@@ -487,8 +486,8 @@ class Solution(object):
         array = []
         for (group, sg_id), dispatch in self.dispatch_results.items():
             for op_id in self.origin_graph.subgraphs[sg_id].topo_sort():
-                if dispatch is None:
-                    order, disp = None, None
+                if dispatch is None or dispatch is "null" or len(dispatch) == 0:
+                    continue
                 else:
                     order ,disp = dispatch.get(op_id, sg_id)
 

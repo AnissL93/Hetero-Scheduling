@@ -39,7 +39,7 @@ def get_log_file_name(model_file, chip, solver):
         get_model_name(model_file, chip, solver) + ".log"
     return log_file
 
-def solve(model: str, subgraph : str, chip_id : str, solver : Solver, dispatch_file = None):
+def solve(model: str, subgraph : str, chip_id : str, solver : Solver, dispatch_result = None):
     """The entry function for solving for a model on chip
 
     Returns:
@@ -58,11 +58,12 @@ def solve(model: str, subgraph : str, chip_id : str, solver : Solver, dispatch_f
 
     chip = supported_chips[chip_id]
     graph = GraphCost(df_graph, df_subgraph, "g", chip, count_self, by_position)
-    if dispatch_file is not None:
-        dispatch = load_dispatch(dispatch_file)
-
     sol = Solution(graph, chip, solver, get_model_name(model, "bst", solver.ID))
-    sol.solve_and_run()
+
+    if dispatch_result is not None:
+        sol.dispatch_results = dispatch_result
+
+    sol.solve_and_run(dispatch_result is not None)
     return sol
 
 def pipeline(sol, factor):

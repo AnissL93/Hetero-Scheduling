@@ -3,6 +3,8 @@
 The basic network structure.
 """
 import logging
+
+import numpy as np
 import pandas as pd
 import ast
 import networkx as nx
@@ -176,15 +178,18 @@ class GraphCost(object):
         _parse_structure()
 
     def make_subgraphs(self, df: pd.DataFrame):
+        # print(f"Make subgraphs with {len(df)} nodes")
         self.df_subgraph = df
         sg_len = len(df)
         self.nx_subgraph = nx.DiGraph()
+
         for i in range(sg_len):
-            sg_id = str(df.loc[i]["subgraph_id"])
+            sg_id = int(df.loc[i]["subgraph_id"])
             self.nx_subgraph.add_node(sg_id)
+            # print(f"add node {sg_id}, subgraph has {len(self.nx_subgraph.nodes)} nodes")
             succs = list(ast.literal_eval(df.loc[i]["succs"]))
             for suc in succs:
-                self.nx_subgraph.add_edge(sg_id, str(suc))
+                self.nx_subgraph.add_edge(sg_id, int(suc))
 
             nodes = list(ast.literal_eval(df.loc[i]["nodes"]))
 
@@ -308,14 +313,11 @@ class GraphCost(object):
         assert False
 
     def get_read_cost(self, op, pid):
-        print(pid)
         if pid in bst_chip.ids():
             return int(self.df_graph[self.df_graph["op_id"] == op]["read"])
 
         elif pid in khadas_chip.ids():
-            print("here")
             data_size = self.get_data_size(op)
-            print(data_size)
             return khadas_device[pid].read(data_size)
 
     def get_write_cost(self, op, pid):
@@ -425,6 +427,10 @@ class DispatchResult(dict):
     def set(self, op, order, d, gid=None):
         if gid is None:
             gid = self.gid
+
+        if not np.issubdtype(type(gid), np.integer):
+            logging.fatal(f"Gid type should be integer-like instead of {type(gid)}")
+            exit(-1)
         self[gid, op] = (order, d)
 
     def get(self, op, gid=None):
@@ -432,23 +438,21 @@ class DispatchResult(dict):
             gid = self.gid
         return self[gid, op]
 
-    def get_dispatch_of_graph(self, gid):
-        ret = DispatchedGraph(gid)
-        for (ggid, op), (order, d) in self.items():
-            if ggid == gid:
-                ret.set(op, order, d, gid)
-        return ret
-
-    def get_exec_order(self, gid=None):
+    def get_exec_order(self, gg=None):
+        gid = gg
         if gid is None:
             gid = self.gid
 
         ret = {}
         for (_gid, op), (order, device) in self.items():
-            if _gid == gid:
-                ret[order] = op
+            if str(_gid) == str(gid):
+                ret[int(order)] = op
 
         return ret
+
+    def get_exec_order_vec(self, gid=None):
+        order = self.get_exec_order(gid)
+        return list(dict(sorted(order.items())).values())
 
     def merge(self, other):
         """Merge dispatch results from all subgraphs to the parent graph
@@ -482,8 +486,8 @@ class DispatchResult(dict):
         else:
             # add subgraph
             for i in range(length):
-                gid = str(df.loc[i]["graph_id"])
-                op = str(df.loc[i]["op_id"])
+                gid = df.loc[i]["graph_id"]
+                op = df.loc[i]["op_id"]
                 device = df.loc[i]["dispatch"]
                 order = df.loc[i]["order"]
                 self.set(op, order, device, gid)
@@ -569,7 +573,6 @@ class DispatchedGraph(GraphCost):
             B.graph_attr["label"] = f"SG #{i}"
 
         # tmp_graph.add_edge("Legend", self.get_exec_order()[0], style="invis")
-        print(tmp.string())
         tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_dispatch(self, n):
@@ -583,10 +586,6 @@ class DispatchedGraph(GraphCost):
             gid = self.graph_id
 
         return self.dispatch_results.get_exec_order(gid)
-
-    def get_exec_order_vec(self, gid=None):
-        order = self.get_exec_order(gid)
-        return list(dict(sorted(order.items())).values())
 
     def dispatch_to_df(self):
         return self.dispatch_results.to_df()
@@ -624,9 +623,17 @@ if __name__ == "__main__":
         "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bst/InceptionV1_bst.csv")
 
     df_dispatch = pd.read_csv("results/bst/bevconv_pipeline-naive.dispatch.csv")
+    
+    model = "data/net_perf/bst_comm/inception_resnet_v2_detail_comm.csv"
+    model_subgraph = "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bst/InceptionResnetV2_bst.csv"
+    df_net = pd.read_csv(model)
+    df_sg = pd.read_csv(model_subgraph)
+    print(df_sg)
 
     graph = GraphCost(df_net, df_subgraph=df_sg,
                       chip=bst_chip, by_position=True)
+
+    print(graph.nx_subgraph.nodes)
 
     print(bst_chip.proc_groups[0])
     print("can support ", graph.can_support_chip(

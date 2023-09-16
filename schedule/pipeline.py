@@ -10,6 +10,7 @@ from .emulator import async_emulation
 from .processor import *
 from .solver import *
 from .cost_graph import *
+from .file import dump_graph
 import os
 import sys
 import networkx as nx
@@ -31,6 +32,7 @@ class Pipeline(object):
         """
         self.solution = solution
         self.performance = {}
+        self.stage_costs = {}
         self.factor = factor
         pass
 
@@ -41,7 +43,7 @@ class Pipeline(object):
           and return components containing the split point 
 
         """
-
+        logging.info(f">>> Enumerate split points for {num_point}")
         nx_subgraph = self.solution.origin_graph.nx_subgraph
 
         def get_split_points():
@@ -72,11 +74,12 @@ class Pipeline(object):
                     return None
 
                 for e1, e2 in origin_sg.out_edges(p):
+                    logging.info(f"Remove edge {e1} and {e2}")
                     sg.remove_edge(e1, e2)
 
                 component = nx.node_connected_component(sg, p)
+                logging.info(f"Add subgraph {list(component)}")
                 comp_g = sg.subgraph(component).copy()
-                logging.info(f"Add subgraph {list(comp_g)}")
                 ret.append(comp_g)
                 # remove component from the graph
                 sg.remove_nodes_from(component)
@@ -85,11 +88,10 @@ class Pipeline(object):
             if len(sg.nodes) > 0:
                 ret.append(sg)
 
-            logging.info(f"Components of points {points}: {ret}")
             return ret
 
         sp = get_split_points()
-        logging.info(f"Split points: {sp}")
+        logging.info(f">>> Split points: {sp}")
         all_strategys = []
         for points in sp:
             comp = get_components(points, nx_subgraph)
@@ -104,8 +106,8 @@ class Pipeline(object):
         """
         ret = 0
         for sg in stage:
-            cost = self.solution.get_emulation_time(proc_group, sg)
-            if cost is None:
+            cost = self.solution.get_emulation_time(proc_group, int(sg))
+            if cost is None or cost < 0:
                 return None
 
             ret += cost
@@ -138,7 +140,6 @@ class Pipeline(object):
         ret = []
         for stg in s:
             ret.append(list(stg.nodes))
-
         return ret
 
     def dump_stage_strategy(self, all_strategys):
@@ -180,6 +181,7 @@ class Pipeline(object):
         proc_strategys = self.solution.chip.get_proc_groups()
 
         for proc_strategy in proc_strategys:
+            logging.info(f">>> Estimating s{proc_strategy}")
             # proc_strategy = ["group0", "group1"]
             num_point = len(proc_strategy) - 1
             if num_point not in stage_strategys_cache.keys():
@@ -189,13 +191,17 @@ class Pipeline(object):
                 stage_strategys = stage_strategys_cache[num_point]
 
             # get pipelined cost for each split point strategy
-            for strategy_id, strategy in enumerate(stage_strategys):
+            logging.info(f">>> Found {len(stage_strategys)} possible strategies")
+            logging.info(stage_strategys[0])
+            for strategy in stage_strategys:
+                logging.info(f"    >>> Mapping {self._strategy_to_list(strategy)} to processor {proc_strategy}")
                 assert len(strategy) == len(proc_strategy)
                 # estimate cost of each stage in one strategy
                 stage_cost = [self.estimate(strategy[i], proc_strategy[i]) for i in range(len(strategy))]
-                logging.info(f"stage cost is {stage_cost}")
                 # add perf if this is a valid split point
                 if None not in stage_cost:
+                    # logging.info(f"    >>> Add strategy: {stage_cost}")
+
                     latency = self.est_lantency(stage_cost)
                     throughput = self.est_throughput(batch_num, stage_cost)
-                    self.performance[str(proc_strategy), str(self._strategy_to_list(strategy))] = (latency, throughput)
+                    self.performance[str(proc_strategy), str(self._strategy_to_list(strategy))] = (latency, throughput, stage_cost)

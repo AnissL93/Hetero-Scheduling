@@ -51,7 +51,7 @@ def async_emulation(graph_cost: GraphCost, dispatch : DispatchResult, chip: Chip
     graph = DispatchedGraph(graph_cost)
     graph.dispatch_results = dispatch
 
-    exec_order = graph.get_exec_order_vec()
+    exec_order = graph.dispatch_results.get_exec_order_vec()
     print("exec order ", exec_order)
     exec_time = ExecTime(exec_order)
 
