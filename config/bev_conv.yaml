@@ -1,5 +1,5 @@
 
 model: "data/net_perf/bst_comm/bev_conv_loaded_fix_sim_detail_comm.csv"
-subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bev_conv_bst.csv"
+subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bst/bev_conv_bst.csv"
 chip_id: "bst"
-dump_path: "results/bst/bevconv_pipeline"
+dump_path: "results/bst/bevconv_pipeline-nocomm"

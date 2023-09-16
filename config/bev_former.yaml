@@ -1,4 +1,4 @@
 model: "data/net_perf/bst_comm/bevformer_with_shape_detail_comm.csv"
 subgraph: "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bevformer_bst.csv"
 chip_id: "bst"
-dump_path: "results/pipeline/bst/bevformer_pipeline"
+dump_path: "results/pipeline/bst/bevformer_pipeline-comm"

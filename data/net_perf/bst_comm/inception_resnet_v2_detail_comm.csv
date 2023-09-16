@@ -1,4 +1,4 @@
-,Unnamed: 0,op_id,op_type,suc,read,write,MACA,CV_DSP,"('maca', 'maca')","('maca', 'cv_dsp')","('cv_dsp', 'maca')","('cv_dsp', 'cv_dsp')"
+,Unnamed: 0,op_id,op_type,suc,read,write,maca,cv_dsp,"('maca', 'maca')","('maca', 'cv_dsp')","('cv_dsp', 'maca')","('cv_dsp', 'cv_dsp')"
 0,0,TFLITE2ONNX_FAF_InceptionResnetV2/InceptionResnetV2/Conv2d_1a_3x3/Relu,Conv,['InceptionResnetV2/InceptionResnetV2/Conv2d_1a_3x3/Relu'],83265,70466,11650,6532990,[70466],[70466],[70466],[70466]
 1,1,InceptionResnetV2/InceptionResnetV2/Conv2d_1a_3x3/Relu,Relu,['TFLITE2ONNX_FAF_InceptionResnetV2/InceptionResnetV2/Conv2d_2a_3x3/Relu'],0,70466,94957,94957,[70466],[70466],[70466],[70466]
 2,2,TFLITE2ONNX_FAF_InceptionResnetV2/InceptionResnetV2/Conv2d_2a_3x3/Relu,Conv,['InceptionResnetV2/InceptionResnetV2/Conv2d_2a_3x3/Relu'],0,72743,21125,2171277,[196845],[196845],[196845],[196845]
