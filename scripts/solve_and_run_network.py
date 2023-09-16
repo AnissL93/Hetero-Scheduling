@@ -67,8 +67,11 @@ def cfg():
     solver = "ilp"
     skip_solve = False
 
+    config_file = None
+
+
 @ex.capture
-def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve):
+def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve, config_file):
     # model = data.get("network")
     # chips = data.get("chips")
     # dump_path = data.get("dump_path")
@@ -124,7 +127,12 @@ def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve):
     # dump_str_f = dump_path + f"-{solver}.csv"
 
 
-ex.add_config("config/inception_v4_bst.yaml")
+ex.add_named_config("v4_bst" ,"config/inception_v4_bst.yaml")
+ex.add_named_config("v1_bst" ,"config/inception_v1_bst.yaml")
+ex.add_named_config("v3_bst" ,"config/inception_v3_bst.yaml")
+ex.add_named_config("v2_bst" ,"config/inception_resnet_v2_bst.yaml")
+ex.add_named_config("bevconv_bst" ,"config/bev_conv.yaml")
+ex.add_named_config("bevformer_bst","config/bev_former.yaml")
 # ex.add_config("config/inception_resnet_v2_khadas.yaml")
 # ex.add_config("config/inception_v3_khadas.yaml")
 # ex.add_config("config/inception_v4_khadas.yaml")
