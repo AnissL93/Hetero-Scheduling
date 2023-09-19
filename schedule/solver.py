@@ -417,7 +417,7 @@ class Solution(object):
         if len(g.subgraphs) > 0:
             for i, sg in g.subgraphs.items():
                 dist = self.dispatch_results[group, sg.graph_id]
-                logging.info(dist)
+                logging.info(f"Run dispatch of subgraph {sg}: {dist}")
                 if dist is None or dist is "null" or len(dist) == 0:
                     logging.info(f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}")
                     self.emulation_results[group, sg.graph_id] = -1

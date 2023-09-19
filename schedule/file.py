@@ -34,7 +34,6 @@ class FileName(object):
 
 
 def load_dispatch(path):
-    logging.info(path)
     df = pd.read_csv(path)
     group_id = df["group_id"].unique()
     graph_id = df["graph_id"].unique()
@@ -54,7 +53,7 @@ def load_dispatch(path):
                     continue
 
                 # add new elements
-                ret[group, graph].set(ins["op_id"], ins["order"], ins["dispatch"])
+                ret[group, graph].set(str(ins["op_id"]), ins["order"], ins["dispatch"])
     # remove group that is all None
     return ret
 

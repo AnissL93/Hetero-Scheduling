@@ -1,8 +1,6 @@
 """
 Define the unique name, type for devices.
 """
-
-
 class Processor(object):
 
     def __init__(self, _type) -> None:
@@ -148,6 +146,9 @@ bst_chip = Chip({
     ["group_maca", "group_dsp0", "group_dsp1"],
     ["group_dsp0", "group_maca", "group_dsp1"],
     ["group_dsp0", "group_dsp1", "group_maca"],
+    ["group_dsp0", "group_dsp1"],
+    ["group_dsp0", "group_maca"],
+    ["group_maca", "group_dsp1"],
 ]
 )
 
@@ -177,12 +178,12 @@ khadas_chip = Chip(
         ["group1"],
         ["group0", "group_gpu"],
         ["group_gpu", "group0"],
-        ["group_gpu", "group_big", "group_small"],
-        ["group_gpu", "group_small", "group_big"],
-        ["group_big", "group_gpu", "group_small"],
-        ["group_big", "group_small", "group_gpu"],
-        ["group_small", "group_gpu", "group_big"],
-        ["group_small", "group_big", "group_gpu"]
+        # ["group_gpu", "group_big", "group_small"],
+        # ["group_gpu", "group_small", "group_big"],
+        # ["group_big", "group_gpu", "group_small"],
+        # ["group_big", "group_small", "group_gpu"],
+        # ["group_small", "group_gpu", "group_big"],
+        # ["group_small", "group_big", "group_gpu"]
     ]
 )
 

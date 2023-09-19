@@ -58,6 +58,7 @@ def async_emulation(graph_cost: GraphCost, dispatch : DispatchResult, chip: Chip
     def run():
         avail_proc = {op: {p_id: 0 for p_id in chip.ids()} for op in exec_order}
 
+        logging.info(exec_order)
         for i,op in enumerate(exec_order):
             assigned_p_id = graph.get_dispatch(op)
 

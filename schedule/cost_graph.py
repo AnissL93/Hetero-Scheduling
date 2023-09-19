@@ -196,10 +196,10 @@ class GraphCost(object):
             node_list = []
             for n in nodes:
                 if self.by_position:
-                    x = self.df_graph.loc[n]["op_id"]
+                    x = str(self.df_graph.loc[n]["op_id"])
                 else:
                     xx = self.df_graph[self.df_graph["op_id"] == n]["op_id"]
-                    x = list(xx.index)[0]
+                    x = str(list(xx.index)[0])
                 node_list.append(str(x))
 
             sg_cost = GraphCost()
@@ -576,6 +576,8 @@ class DispatchedGraph(GraphCost):
         tmp.draw(pdf_file, prog="dot")  # Draw with pygraphviz
 
     def get_dispatch(self, n):
+        if self.by_position is False:
+            n = str(n)
         assert n in self.topo_sort()
         return self.dispatch_results.get(n)[1]
 

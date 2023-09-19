@@ -127,40 +127,20 @@ def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve, con
     # dump_str_f = dump_path + f"-{solver}.csv"
 
 
+ex.add_named_config("v4_k" ,"config/inception_v4_khadas.yaml")
+ex.add_named_config("v1_k" ,"config/inception_v1_khadas.yaml")
+ex.add_named_config("v3_k" ,"config/inception_v3_khadas.yaml")
+ex.add_named_config("v2_k" ,"config/inception_resnet_v2_khadas.yaml")
 ex.add_named_config("v4_bst" ,"config/inception_v4_bst.yaml")
 ex.add_named_config("v1_bst" ,"config/inception_v1_bst.yaml")
 ex.add_named_config("v3_bst" ,"config/inception_v3_bst.yaml")
 ex.add_named_config("v2_bst" ,"config/inception_resnet_v2_bst.yaml")
 ex.add_named_config("bevconv_bst" ,"config/bev_conv.yaml")
 ex.add_named_config("bevformer_bst","config/bev_former.yaml")
-# ex.add_config("config/inception_resnet_v2_khadas.yaml")
-# ex.add_config("config/inception_v3_khadas.yaml")
-# ex.add_config("config/inception_v4_khadas.yaml")
-# ex.add_config("config/bev_former.yaml")
-# ex.add_config("config/bev_conv.yaml")
+
+# cmd: python scripts/solver_and_run_network.py with v4_k "skip_solve=True" -p
 
 @ex.automain
 def main():
     end2end()
     pass
-
-
-# final = pd.read_csv(sys.argv[1])
-# plot_scatter(final, sys.argv[2])
-
-# if __name__ == "__main__":
-#     # df_net = "data/net_perf/bst_comm/bevformer_with_shape_detail_comm.csv"
-#     # df_sg = "third_party/Partitioning-Algorithm/mapping_strategy/subgraphs/bevformer_bst.csv"
-#     # sol = solve(df_net, df_sg, bst_chip, ILPSolver)
-#     # sol_df = sol.dispatch_to_df()
-#     # time_df = sol.emu_time_to_df()
-#     # print(sol_df)
-#     # print(time_df)
-#     # print(sol_df.to_csv("sol-ilp.csv"))
-#     # print(time_df.to_csv("time-ilp.csv"))
-
-#     # p = pipeline(sol)
-#     # pp = p.to_df()
-#     # pp.to_csv("all-time-ilp.csv")
-
-

@@ -205,3 +205,7 @@ class Pipeline(object):
                     latency = self.est_lantency(stage_cost)
                     throughput = self.est_throughput(batch_num, stage_cost)
                     self.performance[str(proc_strategy), str(self._strategy_to_list(strategy))] = (latency, throughput, stage_cost)
+
+                else:
+                    logging.info("Invalid mapping strategy")
+                    invalid_graph = [i for i,v in enumerate(stage_cost) if v is None]
