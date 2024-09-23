@@ -9,8 +9,8 @@ if __name__ == "__main__":
 else:
     from .cost_graph import DispatchResult
 
-class FileName(object):
 
+class FileName(object):
     def __init__(self, base_path, solver, use_time_stamp=False):
         self.base_path = base_path
         self.solver = solver
@@ -29,7 +29,10 @@ class FileName(object):
     def pareto(self):
         return self.complete_path("pareto", "pdf")
 
-    def complete_path(self, name, ext = "csv"):
+    def solve_time(self):
+        return self.complete_path("solve_time", "csv")
+
+    def complete_path(self, name, ext="csv"):
         return self.base_path + f"-{self.solver}.{name}.{ext}"
 
 
@@ -57,7 +60,8 @@ def load_dispatch(path):
     # remove group that is all None
     return ret
 
-def dump_graph(g, pdf_file, print_dot = True):
+
+def dump_graph(g, pdf_file, print_dot=True):
     tmp = nx.nx_agraph.to_agraph(g)
     if print_dot:
         print(tmp.string())
@@ -69,4 +73,3 @@ if __name__ == "__main__":
     d = load_dispatch(path)
     print(d["group0", 27])
     print(d["group0", 27].get_exec_order_vec())
-

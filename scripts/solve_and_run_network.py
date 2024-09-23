@@ -25,7 +25,7 @@ import datetime
 import yaml
 
 logging.basicConfig(
-    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.CRITICAL,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     format="[%(filename)s:%(lineno)d] - %(levelname)s - %(message)s",  # Set the log message format
     datefmt="%Y-%m-%d %H:%M:%S",  # (Optional) Set the date format
 )
@@ -35,7 +35,7 @@ db = MongoObserver()
 ex.observers.append(db)
 
 # Get the current timestamp with microsecond precision
-def draw_dispatch(sol : Solution, dot_file_prefix):
+def draw_dispatch(sol: Solution, dot_file_prefix):
     graph = sol.origin_graph
     for group in sol.chip.get_proc_groups():
         dispatch = sol.dispatch_results[group]
@@ -45,6 +45,7 @@ def draw_dispatch(sol : Solution, dot_file_prefix):
         dgraph.draw_results(sol.chip.get_group_as_chip(group), fname)
     pass
 
+
 def get_model_name(model_file, chip, solver):
     file_name = pathlib.Path(model_file).stem
     current_timestamp = datetime.datetime.now().timestamp()
@@ -52,10 +53,13 @@ def get_model_name(model_file, chip, solver):
     str_date_time = date_time.strftime("%d-%m-%Y-%H:%M:%S")
     return f"{chip}-{file_name}-{solver}-{str_date_time}"
 
+
 def get_log_file_name(model_file, chip, solver):
+    print("get log file")
     home = os.environ.get("HETERO_SCHEDULE_HOME")
     log_file = home + "/log/" + get_model_name(model_file, chip, solver) + ".log"
     return log_file
+
 
 @ex.config
 def cfg():
@@ -68,14 +72,22 @@ def cfg():
     skip_solve = False
 
     config_file = None
+    enable_dump = True
 
 
 @ex.capture
-def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve, config_file):
-    # model = data.get("network")
-    # chips = data.get("chips")
-    # dump_path = data.get("dump_path")
-    # subgraph = data.get("subgraph")
+def end2end(
+    model,
+    subgraph,
+    chip_id,
+    dump_path,
+    factor,
+    solver,
+    skip_solve,
+    config_file,
+    enable_dump,
+):
+    print(model)
     assert os.path.exists(subgraph)
     assert os.path.exists(model)
 
@@ -96,29 +108,33 @@ def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve, con
 
     sol = solve(model, subgraph, chip_id, solver_type, dispatch)
 
-    dispatch_df = sol.dispatch_to_df()
-    time_df = sol.emu_time_to_df()
+    if enable_dump:
+        dispatch_df = sol.dispatch_to_df()
+        time_df = sol.emu_time_to_df()
+        solve_time_df = sol.solve_time_to_df()
 
-    dispatch_df.to_csv(file_name.dispatch())
-    time_df.to_csv(file_name.emu_time())
+        dispatch_df.to_csv(file_name.dispatch())
+        time_df.to_csv(file_name.emu_time())
+        solve_time_df.to_csv(file_name.solve_time())
 
-    ex.add_artifact(file_name.dispatch())
-    ex.add_artifact(file_name.emu_time())
+        ex.add_artifact(file_name.dispatch())
+        ex.add_artifact(file_name.emu_time())
 
     pipe = pipeline(sol, factor)
-    pipe_df = pipe.to_df()
 
-    pipe_df_f = file_name.pipe_time()
-    pipe_df.to_csv(pipe_df_f)
-    ex.add_artifact(pipe_df_f)
+    if enable_dump:
+        pipe_df = pipe.to_df()
+        pipe_df_f = file_name.pipe_time()
+        pipe_df.to_csv(pipe_df_f)
+        ex.add_artifact(pipe_df_f)
 
-    plot_f = file_name.pareto()
-    fig, ax = plt.subplots()
-    plot_pareto(ax, pipe_df)
-    plt.tight_layout()
-    plt.savefig(plot_f)
+        plot_f = file_name.pareto()
+        fig, ax = plt.subplots()
+        plot_pareto(ax, pipe_df)
+        plt.tight_layout()
+        plt.savefig(plot_f)
 
-    ex.add_artifact(plot_f)
+        ex.add_artifact(plot_f)
 
     # dump_dot_f = dump_path + f"-{solver}.dot."
     # draw_dispatch(sol, dump_dot_f)
@@ -127,20 +143,30 @@ def end2end(model, subgraph, chip_id, dump_path, factor, solver, skip_solve, con
     # dump_str_f = dump_path + f"-{solver}.csv"
 
 
-ex.add_named_config("v4_k" ,"config/inception_v4_khadas.yaml")
-ex.add_named_config("v1_k" ,"config/inception_v1_khadas.yaml")
-ex.add_named_config("v3_k" ,"config/inception_v3_khadas.yaml")
-ex.add_named_config("v2_k" ,"config/inception_resnet_v2_khadas.yaml")
-ex.add_named_config("v4_bst" ,"config/inception_v4_bst.yaml")
-ex.add_named_config("v1_bst" ,"config/inception_v1_bst.yaml")
-ex.add_named_config("v3_bst" ,"config/inception_v3_bst.yaml")
-ex.add_named_config("v2_bst" ,"config/inception_resnet_v2_bst.yaml")
-ex.add_named_config("bevconv_bst" ,"config/bev_conv.yaml")
-ex.add_named_config("bevformer_bst","config/bev_former.yaml")
+ex.add_named_config("v4_k", "config/inception_v4_khadas.yaml")
+ex.add_named_config("v1_k", "config/inception_v1_khadas.yaml")
+ex.add_named_config("v3_k", "config/inception_v3_khadas.yaml")
+ex.add_named_config("v2_k", "config/inception_resnet_v2_khadas.yaml")
+ex.add_named_config("v4_bst", "config/inception_v4_bst.yaml")
+ex.add_named_config("v1_bst", "config/inception_v1_bst.yaml")
+ex.add_named_config("v3_bst", "config/inception_v3_bst.yaml")
+ex.add_named_config("v2_bst", "config/inception_resnet_v2_bst.yaml")
+ex.add_named_config("bevconv_bst", "config/bev_conv.yaml")
+ex.add_named_config("bevformer_bst", "config/bev_former.yaml")
 
 # cmd: python scripts/solver_and_run_network.py with v4_k "skip_solve=True" -p
 
+import datetime
+
+
 @ex.automain
 def main():
-    end2end()
+    st = datetime.datetime.now()
+    repeat_n = 1
+    for i in range(repeat_n):
+        end2end()
+    ed = datetime.datetime.now()
+    dur = (ed - st).total_seconds() / float(repeat_n)
+
+    print(f"&&&&& Used time: {dur}")
     pass

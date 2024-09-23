@@ -58,7 +58,7 @@ def solve(model: str, subgraph : str, chip_id : str, solver : Solver, dispatch_r
 
     chip = supported_chips[chip_id]
     graph = GraphCost(df_graph, df_subgraph, "g", chip, count_self, by_position)
-    sol = Solution(graph, chip, solver, get_model_name(model, "bst", solver.ID))
+    sol = Solution(graph, chip, solver, get_model_name(model, chip_id, solver.ID))
 
     if dispatch_result is not None:
         sol.dispatch_results = dispatch_result

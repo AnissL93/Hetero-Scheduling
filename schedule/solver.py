@@ -7,6 +7,7 @@ from gurobipy import GRB
 from pprint import pprint as pp
 import numpy as np
 from collections import defaultdict
+import datetime
 import sys
 
 from .cost_graph import *
@@ -16,8 +17,9 @@ MAX_FLOAT = 1e20
 RESULT_THR = 0.0001
 FORCE_MAIN_CORE = False
 
+
 class Solver(object):
-    def __init__(self, g: GraphCost, chip: Chip, name = None) -> None:
+    def __init__(self, g: GraphCost, chip: Chip, name=None) -> None:
         self.graph = g
         self.chip = chip
         self.model_name = name
@@ -48,6 +50,7 @@ class Solver(object):
         else:
             return None
 
+
 class MinimalSolver(Solver):
     ID = "naive"
 
@@ -62,7 +65,7 @@ class MinimalSolver(Solver):
         ret = DispatchResult(self.graph.graph_id)
         for order, op in enumerate(self.graph.topo_sort()):
             sel_p = None
-            min_time = 2 ** 32
+            min_time = 2**32
             for pid, proc in self.chip.processors.items():
                 c = self.graph.get_compute_cost_one_device(op, proc)
                 if c <= 0:
@@ -71,7 +74,7 @@ class MinimalSolver(Solver):
                 if c < min_time:
                     min_time = c
                     sel_p = pid
-            ret.set(op, order, sel_p) 
+            ret.set(op, order, sel_p)
 
         return ret
 
@@ -80,7 +83,7 @@ class ILPSolver(Solver):
 
     ID = "ilp"
 
-    def __init__(self, g, chip: Chip, model_name = None) -> None:
+    def __init__(self, g, chip: Chip, model_name=None) -> None:
         super().__init__(g, chip, model_name)
         self.prepare()
 
@@ -146,7 +149,6 @@ class ILPSolver(Solver):
         logging.info(self.problem.Params.SolutionLimit)
         logging.info(self.problem.Params.NodefileStart)
 
-
     def get_execution_order(self):
         st_node = []
         for node in self.graph.topo_sort():
@@ -163,18 +165,19 @@ class ILPSolver(Solver):
         )
 
     def get_comm_cost(self, from_node, to_node):
-
         def get_comm_cost(d1, d2):
             if d1 == d2:
                 return 0
             else:
-                return self.graph.get_comm_cost_for_device(from_node, to_node,
-                                                self.chip.get_processor_by_id(d1),
-                                                self.chip.get_processor_by_id(d2))
+                return self.graph.get_comm_cost_for_device(
+                    from_node,
+                    to_node,
+                    self.chip.get_processor_by_id(d1),
+                    self.chip.get_processor_by_id(d2),
+                )
 
         return gp.quicksum(
-            self.comm_sel[from_node, to_node][d1, d2] *
-            get_comm_cost(d1, d2)
+            self.comm_sel[from_node, to_node][d1, d2] * get_comm_cost(d1, d2)
             for d1, d2 in self.chip.get_id_combinations()
         )
 
@@ -207,9 +210,7 @@ class ILPSolver(Solver):
                 for j in range(i + 1, len(nodes)):
                     node1 = nodes[i]
                     node2 = nodes[j]
-                    print(f"{node1} vs {node2}")
                     if not nx.has_path(graph, node1, node2):
-                        print(f"add {node1} -> {node2}")
                         pairs.append((node1, node2))
                         continue
 
@@ -221,6 +222,7 @@ class ILPSolver(Solver):
         """
         for (n, m) n, and m are parallel
         """
+
         def constraint_x():
             """
             Constr1: only one processor is assigned to True
@@ -243,23 +245,25 @@ class ILPSolver(Solver):
                 Sum(comm_sel[e1, e2]) == 1 for all device pairs
             """
             for f, t in self.graph.get_edges():
-                self.problem.addConstr(gp.quicksum(
-                    [
-                        self.comm_sel[f, t][d1, d2]
-                        for d1, d2 in self.chip.get_id_combinations()
-                    ]
-                ) == 1)
+                self.problem.addConstr(
+                    gp.quicksum(
+                        [
+                            self.comm_sel[f, t][d1, d2]
+                            for d1, d2 in self.chip.get_id_combinations()
+                        ]
+                    )
+                    == 1
+                )
 
             for f, t in self.graph.get_edges():
                 for d1, d2 in self.chip.get_id_combinations():
                     xf1 = self.x[f, d1]
                     xt2 = self.x[t, d2]
                     y = self.comm_sel[f, t][d1, d2]
-                    expr = xf1 + xt2 - 2*y
+                    expr = xf1 + xt2 - 2 * y
                     self.problem.addConstr(expr >= 0)
                     self.problem.addConstr(expr <= 1)
 
-            
         def constraint_force_main_core():
             """
             Force node with multiple outputs or inputs to big core
@@ -268,7 +272,6 @@ class ILPSolver(Solver):
             for node in self.graph.topo_sort():
                 if len(self.graph.sucs(node)) > 1 or len(self.graph.prevs(node)) > 1:
                     self.problem.addConstr(self.x[node, main_core] == 1)
-
 
         def constraint_st_ft():
             """
@@ -307,14 +310,15 @@ class ILPSolver(Solver):
                         for suc_m in self.graph.sucs(m):
                             ed_m = self.ft_with_comm[m, suc_m]
                             ed_n = self.ft_with_comm[n, suc_n]
-                            y_var = self.problem.addVar(
-                                vtype=GRB.BINARY
+                            y_var = self.problem.addVar(vtype=GRB.BINARY)
+                            cond1 = (
+                                ed_n - st_m <= self.M * (2 - xn - xm) + self.M * y_var
                             )
-                            cond1 = ed_n - st_m <= self.M * (2 - xn - xm) + self.M * y_var
-                            cond2 = ed_m - st_n <= self.M * (2 - xn - xm) + self.M * (1-y_var)
+                            cond2 = ed_m - st_n <= self.M * (2 - xn - xm) + self.M * (
+                                1 - y_var
+                            )
                             self.problem.addConstr(cond1)
                             self.problem.addConstr(cond2)
-                
 
         def constraint_proc_assign():
             """
@@ -336,13 +340,18 @@ class ILPSolver(Solver):
                     yy = y[n, m, h]
                     xn = self.x[n, h]
                     xm = self.x[m, h]
-                    #cond = self.ft_compute_only[n] - self.st[m] + 2* self.M * (xn + xm - 2) <= self.M * yy
-                    cond = self.ft_compute_only[n] - self.st[m] <= self.M * (2 - xn - xm) + self.M * yy
+                    # cond = self.ft_compute_only[n] - self.st[m] + 2* self.M * (xn + xm - 2) <= self.M * yy
+                    cond = (
+                        self.ft_compute_only[n] - self.st[m]
+                        <= self.M * (2 - xn - xm) + self.M * yy
+                    )
                     self.problem.addConstr(cond, f"pair_{n}_{m}_{h}")
 
-                    cond = self.ft_compute_only[m] - self.st[n] <= self.M * (2 - xn - xm) + self.M * (1-yy)
+                    cond = self.ft_compute_only[m] - self.st[n] <= self.M * (
+                        2 - xn - xm
+                    ) + self.M * (1 - yy)
                     # cond = self.ft_compute_only[m] - self.st[n] + 2* self.M * (xn + xm - 2) <= self.M * (
-                            # 1 - yy
+                    # 1 - yy
                     # )
                     self.problem.addConstr(cond, f"pair_{m}_{n}_{h}")
 
@@ -355,6 +364,7 @@ class ILPSolver(Solver):
             constraint_force_main_core()
 
     def solve(self):
+        logging.info("========== solve =========")
         to_one = self.assign_to_one()
         if to_one is not None:
             return to_one
@@ -364,10 +374,9 @@ class ILPSolver(Solver):
         self.problem.optimize()
 
         if self.model_name is not None:
-            pass
-            # self.problem.write("results/ilp/" + self.model_name + ".lp")
-            # self.problem.write("results/ilp/" + self.model_name + ".mst")
-            # self.problem.write("results/ilp/" + self.model_name + ".sol")
+            self.problem.write("results/ilp/" + self.model_name + ".lp")
+            self.problem.write("results/ilp/" + self.model_name + ".mst")
+            self.problem.write("results/ilp/" + self.model_name + ".sol")
 
         self.print_problem()
         return self.get_device_dispatch_results()
@@ -378,7 +387,7 @@ class ILPSolver(Solver):
         for idx, op in enumerate(order):
             has_dispatched = False
             for j in self.chip.ids():
-                if abs(1. - self.x[op, j].X) < RESULT_THR:
+                if abs(1.0 - self.x[op, j].X) < RESULT_THR:
                     has_dispatched = True
                     dist.set(op, idx, j, self.graph.graph_id)
 
@@ -393,9 +402,12 @@ class ILPSolver(Solver):
 
         return dist
 
-class Solution(object):
 
-    def __init__(self, g : GraphCost, chip : Chip, solver_type : Solver, model_name):
+class Solution(object):
+    def __init__(self, g: GraphCost, chip: Chip, solver_type: Solver, model_name):
+        print(chip)
+        print(chip.groups)
+
         assert len(chip.groups) > 0
         self.origin_graph = g
         self.chip = chip
@@ -403,11 +415,12 @@ class Solution(object):
         self.dispatch_results = {}
         self.emulation_results = {}
         self.solver_type = solver_type
+        self.solve_time = {}
 
-    def get_dispatch(self, group : str, sg_id):
+    def get_dispatch(self, group: str, sg_id):
         return self.dispatch_results[group, sg_id]
 
-    def get_emulation_time(self, group : str, sg_id):
+    def get_emulation_time(self, group: str, sg_id):
         assert isinstance(sg_id, int)
         return self.emulation_results[group, sg_id]
 
@@ -419,7 +432,9 @@ class Solution(object):
                 dist = self.dispatch_results[group, sg.graph_id]
                 logging.info(f"Run dispatch of subgraph {sg}: {dist}")
                 if dist is None or dist is "null" or len(dist) == 0:
-                    logging.info(f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}")
+                    logging.info(
+                        f"Skip subgraph {sg.graph_id} which does not support chip {str(chip)}"
+                    )
                     self.emulation_results[group, sg.graph_id] = -1
                 else:
                     total_time = async_emulation(sg, dist, chip).get_total_time()
@@ -430,7 +445,7 @@ class Solution(object):
             total_time = async_emulation(g, dist, chip).get_total_time()
             self.emulation_results[group, g.graph_id] = total_time
 
-    def solve_group(self, SolverType, group : str):
+    def solve_group(self, SolverType, group: str):
         """
         solverType: solve class, e.g., ILPSolver/BasicSolver/...
         cost: the cost of each operation, e.g.,
@@ -453,30 +468,44 @@ class Solution(object):
         if len(g.subgraphs) > 0:
             for i, sg in g.subgraphs.items():
                 if not sg.can_support_chip(chip):
-                    logging.info(f"Subgraph {sg.graph_id} does not support chip {str(chip)}")
+                    logging.info(
+                        f"Subgraph {sg.graph_id} does not support chip {str(chip)}"
+                    )
                     self.dispatch_results[group, sg.graph_id] = None
                     self.emulation_results[group, sg.graph_id] = None
+                    self.solve_time[group, sg.graph_id] = -2
                     continue
 
                 solver = SolverType(sg, chip, f"{sg.graph_id}_{self.model_name}")
+                st_time = datetime.datetime.now()
                 dist = solver.solve()
+                stop_time = datetime.datetime.now()
                 # gather all dispatch info to parent graph
                 self.dispatch_results[group, sg.graph_id] = dist
+                self.solve_time[group, sg.graph_id] = (
+                    stop_time - st_time
+                ).total_seconds()
 
         else:
             solver = SolverType(g, chip, f"{g.graph_id}_{self.model_name}")
+            st_time = datetime.datetime.now()
             dispatch = solver.solve()
+            stop_time = datetime.datetime.now()
             self.dispatch_results[group, g.graph_id] = dispatch
+            self.solve_time[group, sg.graph_id] = (stop_time - st_time).total_seconds()
 
-    def solve_and_run(self, skip_solver = False):
-        """Get the dispatch results and get estimated cost for <group, subgraph>
-        """
+    def solve_and_run(self, skip_solver=False):
+        """Get the dispatch results and get estimated cost for <group, subgraph>"""
         for group in self.chip.groups.keys():
             logging.info(f"Solve group {group}")
             if not skip_solver:
+                st_time = datetime.datetime.now()
                 self.solve_group(self.solver_type, group)
+                stop_time = datetime.datetime.now()
+                self.solve_time[group, -1] = (stop_time - st_time).total_seconds()
             else:
                 logging.info(">>>>>>>>>>> Skip solver!")
+                self.solve_time[group, -1] = 0
             self.run_group(group)
 
     def dispatch_to_df(self):
@@ -489,20 +518,23 @@ class Solution(object):
                 if dispatch is None or dispatch is "null" or len(dispatch) == 0:
                     continue
                 else:
-                    order ,disp = dispatch.get(op_id, sg_id)
+                    order, disp = dispatch.get(op_id, sg_id)
 
-                array.append([
-                    group,
-                    sg_id,
-                    op_id,
-                    order,
-                    disp
-                ])
-        return pd.DataFrame(array, columns = ["group_id", "graph_id","op_id", "order", "dispatch"])
+                array.append([group, sg_id, op_id, order, disp])
+        return pd.DataFrame(
+            array, columns=["group_id", "graph_id", "op_id", "order", "dispatch"]
+        )
 
     def emu_time_to_df(self):
         array = []
         for (group, sg_id), time in self.emulation_results.items():
-            array.append([ group, sg_id, time ])
+            array.append([group, sg_id, time])
+
+        return pd.DataFrame(array, columns=["group_id", "graph_id", "time"])
+
+    def solve_time_to_df(self):
+        array = []
+        for (group, sg_id), time in self.solve_time.items():
+            array.append([group, sg_id, time])
 
         return pd.DataFrame(array, columns=["group_id", "graph_id", "time"])

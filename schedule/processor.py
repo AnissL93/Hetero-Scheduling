@@ -1,8 +1,9 @@
 """
 Define the unique name, type for devices.
 """
-class Processor(object):
 
+
+class Processor(object):
     def __init__(self, _type) -> None:
         self.type = _type
         pass
@@ -14,8 +15,9 @@ class Processor(object):
         return hash(self.type)
 
     def __eq__(self, __value: object) -> bool:
-        if not isinstance(__value, type(self)): return NotImplemented
-        return (self.type == __value.type)
+        if not isinstance(__value, type(self)):
+            return NotImplemented
+        return self.type == __value.type
 
 
 class Chip(object):
@@ -25,7 +27,7 @@ class Chip(object):
     }
     """
 
-    def __init__(self, ps: dict, _groups : dict = None, _proc_group = None) -> None:
+    def __init__(self, ps: dict, _groups: dict = None, _proc_group=None) -> None:
         self.processors = ps
         self.groups = _groups
         self.proc_groups = _proc_group
@@ -115,7 +117,7 @@ class Chip(object):
     def get_group_as_chip(self, i):
         assert self.groups is not None
         print(self.groups)
-        return Chip({k : self.processors[k] for k in self.groups[i]})
+        return Chip({k: self.processors[k] for k in self.groups[i]})
 
     def get_proc_groups(self):
         return self.proc_groups
@@ -124,90 +126,75 @@ class Chip(object):
 maca = Processor("maca")
 cv_dsp = Processor("cv_dsp")
 
-bst_chip = Chip({
-    "cv_dsp0": cv_dsp,
-    "maca": maca,
-    "cv_dsp1": cv_dsp
-},
-{
-    "group0": ["cv_dsp0", "maca"], 
-    "group1": ["cv_dsp0", "maca", "cv_dsp1"],
-    "group2": ["cv_dsp0", "cv_dsp1"],
-    "group_dsp0": ["cv_dsp0"],
-    "group_dsp1": ["cv_dsp1"],
-    "group_maca": ["maca"],
-},
-[
-    ["group0", "group_dsp1"],
-    ["group_dsp1", "group0"],
-    ["group2", "group_maca"],
-    ["group_maca", "group2"],
-    ["group1"],
-    ["group_maca", "group_dsp0", "group_dsp1"],
-    ["group_dsp0", "group_maca", "group_dsp1"],
-    ["group_dsp0", "group_dsp1", "group_maca"],
-    ["group_dsp0", "group_dsp1"],
-    ["group_dsp0", "group_maca"],
-    ["group_maca", "group_dsp1"],
-]
+bst_chip = Chip(
+    {"cv_dsp0": cv_dsp, "maca": maca, "cv_dsp1": cv_dsp},
+    {
+        "group_dsp_maca": ["cv_dsp0", "maca"],
+        "group_dsp_dsp_maca": ["cv_dsp0", "cv_dsp1", "maca"],
+        "group_dsp_dsp": ["cv_dsp0", "cv_dsp1"],
+        # "group_dsp0": ["cv_dsp0"],
+        # "group_dsp1": ["cv_dsp1"],
+        # "group_maca": ["maca"],
+    },
+    [
+        # ["group0", "group_dsp1"],
+        # ["group_dsp1", "group0"],
+        # ["group2", "group_maca"],
+        # ["group_maca", "group2"],
+        ["group1"],
+        # ["group_maca", "group_dsp0", "group_dsp1"],
+        # ["group_dsp0", "group_maca", "group_dsp1"],
+        # ["group_dsp0", "group_dsp1", "group_maca"],
+        # ["group_dsp0", "group_dsp1"],
+        # ["group_dsp0", "group_maca"],
+        # ["group_maca", "group_dsp1"],
+    ],
 )
 
-bst_chip_dsp_only = Chip({
-    "cv_dsp0": cv_dsp,
-    "cv_dsp1": cv_dsp
-})
+bst_chip_dsp_only = Chip({"cv_dsp0": cv_dsp, "cv_dsp1": cv_dsp})
 
 cpu_big = Processor("cpu_b")
 cpu_small = Processor("cpu_s")
 gpu = Processor("gpu")
 
 khadas_chip = Chip(
+    {"cpu_b": cpu_big, "cpu_s": cpu_small, "gpu": gpu},
     {
-        "cpu_b": cpu_big,
-        "cpu_s": cpu_small,
-        "gpu": gpu
-    }, 
-    {
-        "group0": ["cpu_b", "cpu_s"],
-        "group1": ["cpu_b", "cpu_s", "gpu"],
-        "group_gpu": ["gpu"],
-        "group_big": ["cpu_b"],
-        "group_small": ["cpu_s"]
+        "group_b_s": ["cpu_b", "cpu_s"],
+        "group_b_s_g": ["cpu_b", "cpu_s", "gpu"],
+        "group_b_g": ["cpu_b", "gpu"],
+        # "group_gpu": ["gpu"],
+        # "group_big": ["cpu_b"],
+        # "group_small": ["cpu_s"],
     },
     [
-        ["group1"],
-        ["group0", "group_gpu"],
-        ["group_gpu", "group0"],
+        ["group_b_g"],
+        ["group_b_s_g"],
+        ["group_b_s"]
+        # ["group1"],
+        # ["group0", "group_gpu"],
+        # ["group_gpu", "group0"],
         # ["group_gpu", "group_big", "group_small"],
         # ["group_gpu", "group_small", "group_big"],
         # ["group_big", "group_gpu", "group_small"],
         # ["group_big", "group_small", "group_gpu"],
         # ["group_small", "group_gpu", "group_big"],
         # ["group_small", "group_big", "group_gpu"]
-    ]
+    ],
 )
 
-khadas_chip_cpu_only = Chip(
-    {
-        "cpu_b": cpu_big,
-        "cpu_s": cpu_small
-    }
-)
+khadas_chip_cpu_only = Chip({"cpu_b": cpu_big, "cpu_s": cpu_small})
 
-khadas_chip_big_core_gpu = Chip(
-    {
-        "cpu_b": cpu_big,
-        "gpu": gpu
-    }
-)
+khadas_chip_big_core_gpu = Chip({"cpu_b": cpu_big, "gpu": gpu})
 
 supported_chips = {
     "khadas": khadas_chip,
     "bst": bst_chip,
     "bst_dsp_only": bst_chip_dsp_only,
     "khadas_cpu_only": khadas_chip_cpu_only,
-    "khadas_cpu_b_gpu" : khadas_chip_big_core_gpu
+    "khadas_cpu_b_gpu": khadas_chip_big_core_gpu,
 }
+
 
 def test_chip():
     assert bst_chip.types_set() == ["maca", "cv_dsp"]
